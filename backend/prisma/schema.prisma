@@ -1,0 +1,32 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(uuid()) @db.Uuid
+  name          String
+  email         String         @unique
+  password_hash String         @map("password_hash")
+  created_at    DateTime       @default(now()) @map("created_at")
+  refresh_tokens RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  user_id    String    @map("user_id") @db.Uuid
+  token_hash String    @map("token_hash")
+  created_at DateTime  @default(now()) @map("created_at")
+  expires_at DateTime  @map("expires_at")
+  revoked_at DateTime? @map("revoked_at")
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
