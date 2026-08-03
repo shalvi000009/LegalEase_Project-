@@ -122,7 +122,7 @@ export class DocumentController {
       ]);
 
       res.status(200).json({
-        documents: documents.map((doc) => ({
+        documents: documents.map((doc: any) => ({
           id: doc.id,
           filename: doc.filename,
           s3_key: doc.s3_key,

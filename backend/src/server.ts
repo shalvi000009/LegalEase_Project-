@@ -11,8 +11,12 @@ const startServer = async () => {
     await ensureBucketExists();
 
     // 2. Start background BullMQ worker
-    const worker = startAnalysisWorker();
-    console.log("👷 Background document analysis worker started successfully.");
+    if (process.env.MOCK_SERVICES !== "true") {
+      const worker = startAnalysisWorker();
+      console.log("👷 Background document analysis worker started successfully.");
+    } else {
+      console.log("👷 Mock services enabled, background worker initialized inline.");
+    }
 
     // 3. Start Express server
     app.listen(PORT, HOST, () => {

@@ -99,6 +99,103 @@ async function runVerification() {
         failures.push(`Auth Middleware Test failed: expected 401, got ${uploadNoAuthRes.status}`);
       }
 
+      // 8. Register a test user
+      const registerRes = await fetch(`${baseUrl}/api/v1/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Verify Week 2 User",
+          email: `verify.week2.${Date.now()}@example.com`,
+          password: "Password123!",
+        }),
+      });
+      const registerData = await registerRes.json();
+      if (registerRes.status === 201 && registerData.tokens?.accessToken) {
+        console.log("✅ 8. Success: User registered successfully in Mock DB");
+      } else {
+        failures.push(`User registration failed: status ${registerRes.status}, data: ${JSON.stringify(registerData)}`);
+      }
+
+      // 9. Login as the registered user
+      const loginRes = await fetch(`${baseUrl}/api/v1/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: registerData.user?.email || "none@example.com",
+          password: "Password123!",
+        }),
+      });
+      const loginData = await loginRes.json();
+      const accessToken = loginData.tokens?.accessToken;
+      const refreshToken = loginData.tokens?.refreshToken;
+      if (loginRes.status === 200 && accessToken) {
+        console.log("✅ 9. Success: User logged in and retrieved access token");
+      } else {
+        failures.push(`User login failed: status ${loginRes.status}`);
+      }
+
+      // 10. Refresh the access token
+      const refreshRes = await fetch(`${baseUrl}/api/v1/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      });
+      const refreshData = await refreshRes.json();
+      const newAccessToken = refreshData.tokens?.accessToken;
+      if (refreshRes.status === 200 && newAccessToken) {
+        console.log("✅ 10. Success: Access token refreshed successfully");
+      } else {
+        failures.push(`Token refresh failed: status ${refreshRes.status}`);
+      }
+
+      // 11. Upload a mock document
+      const formData = new FormData();
+      const blob = new Blob(["%PDF-1.5 dummy content"], { type: "application/pdf" });
+      formData.append("file", blob, "test_week2_contract.pdf");
+
+      const uploadRes = await fetch(`${baseUrl}/api/v1/documents`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${newAccessToken || accessToken}`,
+        },
+        body: formData,
+      });
+      const uploadData = await uploadRes.json();
+      const uploadedDocId = uploadData.document?.id;
+      if (uploadRes.status === 201 && uploadedDocId) {
+        console.log(`✅ 11. Success: Document uploaded successfully, received ID: ${uploadedDocId}`);
+      } else {
+        failures.push(`Document upload failed: status ${uploadRes.status}, data: ${JSON.stringify(uploadData)}`);
+      }
+
+      // 12. Poll document status (it should be "uploaded" or "processing" or "done")
+      if (uploadedDocId) {
+        const pollRes = await fetch(`${baseUrl}/api/v1/documents/${uploadedDocId}`, {
+          headers: {
+            "Authorization": `Bearer ${newAccessToken || accessToken}`,
+          },
+        });
+        const pollData = await pollRes.json();
+        if (pollRes.status === 200 && pollData.document?.id === uploadedDocId) {
+          console.log(`✅ 12. Success: Polled document, current status: ${pollData.document.status}`);
+        } else {
+          failures.push(`Poll document failed: status ${pollRes.status}`);
+        }
+      }
+
+      // 13. List documents (paginated list)
+      const listRes = await fetch(`${baseUrl}/api/v1/documents?page=1&limit=5`, {
+        headers: {
+          "Authorization": `Bearer ${newAccessToken || accessToken}`,
+        },
+      });
+      const listData = await listRes.json();
+      if (listRes.status === 200 && Array.isArray(listData.documents) && listData.documents.length > 0) {
+        console.log(`✅ 13. Success: Retrieved document list with pagination: total items: ${listData.pagination?.total}`);
+      } else {
+        failures.push(`List documents failed: status ${listRes.status}`);
+      }
+
     } catch (err: any) {
       failures.push(`Execution error during verification: ${err.message}`);
     } finally {
