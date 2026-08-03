@@ -39,9 +39,13 @@ app = FastAPI(
 # Week 2: Upload pipeline router
 # ---------------------------------------------------------------------------
 from routers.internal_extract import router as extract_router  # noqa: E402
-
 app.include_router(extract_router)
 logger.info("Registered router: /internal/extract")
+
+# Week 3: Clause classification and risk scoring router
+from routers.internal_classify import router as classify_router  # noqa: E402
+app.include_router(classify_router)
+logger.info("Registered router: /internal/classify")
 
 
 # ---------------------------------------------------------------------------
