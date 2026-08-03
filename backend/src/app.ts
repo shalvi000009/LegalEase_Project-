@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import swaggerUi from "swagger-ui-express";
 import authRoutes from "./routes/auth.routes";
 import documentRoutes from "./routes/document.routes";
+import analysisRoutes from "./routes/analysis.routes";
 import { swaggerSpec } from "./config/swagger";
 import { errorHandler } from "./middleware/errorHandler";
 
@@ -56,6 +57,7 @@ app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // API Routes
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/documents", documentRoutes);
+app.use("/api/v1/documents", analysisRoutes);
 
 // Centralized error handling
 app.use(errorHandler);

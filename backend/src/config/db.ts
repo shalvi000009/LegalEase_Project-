@@ -7,6 +7,8 @@ class MockPrisma {
   private users: any[] = [];
   private refreshTokens: any[] = [];
   private documents: any[] = [];
+  private analyses: any[] = [];
+  private clauses: any[] = [];
 
   public user = {
     findUnique: async ({ where }: any) => {
@@ -81,6 +83,49 @@ class MockPrisma {
         return doc;
       }
       throw new Error("Document not found");
+    }
+  };
+
+  public analysis = {
+    create: async ({ data }: any) => {
+      const a = {
+        id: data.id || "mock-analysis-uuid-" + Date.now(),
+        document_id: data.document_id,
+        overall_risk_score: data.overall_risk_score,
+        model_version: data.model_version,
+        created_at: new Date(),
+      };
+      this.analyses.push(a);
+      return a;
+    },
+    findFirst: async ({ where, include }: any) => {
+      const a = this.analyses.find(item => item.document_id === where.document_id || item.id === where.id);
+      if (!a) return null;
+      
+      const copy = { ...a };
+      if (include && include.clauses) {
+        copy.clauses = this.clauses.filter(c => c.analysis_id === a.id);
+      }
+      return copy;
+    }
+  };
+
+  public clause = {
+    createMany: async ({ data }: any) => {
+      const newClauses = data.map((c: any) => ({
+        id: "mock-clause-uuid-" + Math.random(),
+        analysis_id: c.analysis_id,
+        clause_type: c.clause_type,
+        risk_level: c.risk_level,
+        explanation: c.explanation,
+        original_text: c.original_text,
+        risk_score: c.risk_score,
+      }));
+      this.clauses.push(...newClauses);
+      return { count: newClauses.length };
+    },
+    findMany: async ({ where }: any) => {
+      return this.clauses.filter(c => c.analysis_id === where.analysis_id);
     }
   };
 

@@ -45,6 +45,46 @@ export const enqueueAnalysisJob = async (documentId: string, s3Key: string): Pro
         // Simulate 5 seconds processing latency
         await new Promise((resolve) => setTimeout(resolve, 5000));
 
+        const overallScore = Math.floor(Math.random() * 70) + 15;
+        const analysis = await prisma.analysis.create({
+          data: {
+            document_id: documentId,
+            overall_risk_score: overallScore,
+            model_version: "legal-bert-v1.0.0-mock",
+          },
+        });
+
+        const mockClauses = [
+          {
+            analysis_id: analysis.id,
+            clause_type: "liability",
+            risk_level: "high",
+            explanation: "The limitation of liability is uncapped for third-party claims, which introduces substantial commercial risk.",
+            original_text: "Each party shall be liable to the other without limit for any direct or indirect damages.",
+            risk_score: 90,
+          },
+          {
+            analysis_id: analysis.id,
+            clause_type: "confidentiality",
+            risk_level: "low",
+            explanation: "Standard mutual confidentiality clause with appropriate exclusions for public domain information.",
+            original_text: "The receiving party agrees to maintain the confidentiality of all proprietary information.",
+            risk_score: 10,
+          },
+          {
+            analysis_id: analysis.id,
+            clause_type: "termination",
+            risk_level: "medium",
+            explanation: "Termination for convenience requires a 90-day notice period, which is slightly longer than the standard 30-60 days.",
+            original_text: "Either party may terminate this agreement upon ninety (90) days written notice to the other party.",
+            risk_score: 50,
+          },
+        ];
+
+        await prisma.clause.createMany({
+          data: mockClauses,
+        });
+
         await prisma.document.update({
           where: { id: documentId },
           data: { status: "done" },

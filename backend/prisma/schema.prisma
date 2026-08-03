@@ -48,6 +48,55 @@ model Document {
   created_at DateTime       @default(now()) @map("created_at")
 
   user       User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  analyses   Analysis[]
 
   @@map("documents")
+}
+
+enum ClauseType {
+  liability
+  termination
+  indemnification
+  governing_law
+  confidentiality
+  intellectual_property
+  non_compete
+  payment
+  warranty
+  force_majeure
+  assignment
+  entire_agreement
+}
+
+enum RiskLevel {
+  low
+  medium
+  high
+}
+
+model Analysis {
+  id                 String     @id @default(uuid()) @db.Uuid
+  document_id        String     @map("document_id") @db.Uuid
+  overall_risk_score Int        @map("overall_risk_score")
+  model_version      String     @map("model_version")
+  created_at         DateTime   @default(now()) @map("created_at")
+
+  document           Document   @relation(fields: [document_id], references: [id], onDelete: Cascade)
+  clauses            Clause[]
+
+  @@map("analyses")
+}
+
+model Clause {
+  id             String       @id @default(uuid()) @db.Uuid
+  analysis_id    String       @map("analysis_id") @db.Uuid
+  clause_type    ClauseType   @map("clause_type")
+  risk_level     RiskLevel    @map("risk_level")
+  explanation    String       @db.Text
+  original_text  String       @map("original_text") @db.Text
+  risk_score     Int          @map("risk_score")
+
+  analysis       Analysis     @relation(fields: [analysis_id], references: [id], onDelete: Cascade)
+
+  @@map("clauses")
 }
