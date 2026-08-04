@@ -58,7 +58,7 @@ test_cases = [
     ),
     (
         "The vendor will indemnify and hold harmless the buyer from all damages.",
-        "indemnification",
+        "indemnity",
     ),
     (
         "Employee shall not engage in any competing business in the restricted area.",
@@ -70,7 +70,7 @@ test_cases = [
     ),
     (
         "The liability of the service provider is capped at the fees paid.",
-        "liability",
+        "limitation_of_liability",
     ),
     (
         "Governed by and construed in accordance with New York law.",

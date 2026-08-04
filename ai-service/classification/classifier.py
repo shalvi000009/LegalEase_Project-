@@ -30,41 +30,17 @@ except ImportError:
 # Archetypal reference sentences for the 12 clause types
 # ---------------------------------------------------------------------------
 REFERENCE_CLAUSES: Dict[str, List[str]] = {
-    "liability": [
-        "In no event shall either party be liable for consequential, incidental, special, or indirect damages.",
-        "The maximum aggregate liability of the Provider under this agreement shall be limited to the fees paid.",
-        "The liability of either party for loss or damage under this contract is capped at the contract value.",
-        "Nothing in this agreement limits liability for fraud, gross negligence, or willful misconduct."
-    ],
     "termination": [
         "This Agreement may be terminated by either party upon 30 days written notice.",
         "In the event of default or material breach, the non-breaching party may terminate immediately.",
         "Upon termination of this Agreement, all licenses granted hereunder shall cease and determine.",
         "Either party may terminate this agreement for convenience with sixty days prior notice."
     ],
-    "indemnification": [
+    "indemnity": [
         "Each party shall indemnify, defend, and hold harmless the other party from any claims, losses, or liabilities.",
         "The Customer agrees to indemnify the Provider against liabilities, losses, damages, or costs arising from breach.",
         "Indemnification obligations under this section shall survive the expiration or termination of this agreement.",
         "The vendor will defend and hold the buyer harmless from any third-party intellectual property claims."
-    ],
-    "governing_law": [
-        "This Agreement shall be governed by and construed in accordance with the laws of the State of New York.",
-        "Any legal action arising under this contract shall be brought in the courts of California.",
-        "The parties submit to the exclusive jurisdiction of the state and federal courts located in Chicago.",
-        "This contract is governed by and interpreted under Delaware law, excluding its conflict of laws principles."
-    ],
-    "confidentiality": [
-        "The parties shall maintain the confidentiality of all Proprietary and Confidential Information.",
-        "Confidential Information shall not be disclosed to any third party without prior written consent.",
-        "This confidentiality obligation survives the termination of this agreement for a period of five years.",
-        "Recipient agrees to restrict access to protected information to employees on a need-to-know basis."
-    ],
-    "intellectual_property": [
-        "All intellectual property rights in the software and deliverables remain the sole property of the Developer.",
-        "The Client is granted a non-exclusive, non-transferable license to use the system during the term.",
-        "Any inventions or developments created during the performance of services belong exclusively to the Company.",
-        "Each party retains ownership of its pre-existing intellectual property, patents, copyrights, and trade secrets."
     ],
     "non_compete": [
         "The Employee agrees not to compete with the Company in the specified territory during employment.",
@@ -72,17 +48,35 @@ REFERENCE_CLAUSES: Dict[str, List[str]] = {
         "The Covenantor shall not solicit, contract with, or perform services for competitors within the restricted area.",
         "This non-compete covenant restricts the seller from operating a similar business within a 50-mile radius."
     ],
-    "payment": [
+    "confidentiality": [
+        "The parties shall maintain the confidentiality of all Proprietary and Confidential Information.",
+        "Confidential Information shall not be disclosed to any third party without prior written consent.",
+        "This confidentiality obligation survives the termination of this agreement for a period of five years.",
+        "Recipient agrees to restrict access to protected information to employees on a need-to-know basis."
+    ],
+    "limitation_of_liability": [
+        "In no event shall either party be liable for consequential, incidental, special, or indirect damages.",
+        "The maximum aggregate liability of the Provider under this agreement shall be limited to the fees paid.",
+        "The liability of either party for loss or damage under this contract is capped at the contract value.",
+        "Nothing in this agreement limits liability for fraud, gross negligence, or willful misconduct."
+    ],
+    "payment_terms": [
         "Payment shall be made within 30 days of receipt of a valid and undisputed invoice.",
         "All fees are exclusive of taxes and shall be paid in US Dollars by wire transfer.",
         "Interest on late payments shall accrue at a rate of 1.5% per month or the maximum legal rate.",
         "Client shall pay all invoices in full without any setoff, deduction, or counterclaim."
     ],
-    "warranty": [
-        "The services are provided on an as-is basis without warranties of any kind, express or implied.",
-        "The contractor warrants that all deliverables will perform in accordance with the specifications.",
-        "Except as expressly provided, the seller disclaims all warranties of merchantability and fitness for a particular purpose.",
-        "Warranties under this agreement shall run for a period of ninety days from delivery."
+    "governing_law": [
+        "This Agreement shall be governed by and construed in accordance with the laws of the State of New York.",
+        "Any legal action arising under this contract shall be brought in the courts of California.",
+        "The parties submit to the exclusive jurisdiction of the state and federal courts located in Chicago.",
+        "This contract is governed by and interpreted under Delaware law, excluding its conflict of laws principles."
+    ],
+    "intellectual_property": [
+        "All intellectual property rights in the software and deliverables remain the sole property of the Developer.",
+        "The Client is granted a non-exclusive, non-transferable license to use the system during the term.",
+        "Any inventions or developments created during the performance of services belong exclusively to the Company.",
+        "Each party retains ownership of its pre-existing intellectual property, patents, copyrights, and trade secrets."
     ],
     "force_majeure": [
         "Neither party shall be liable for failure to perform due to acts of God, war, riot, or natural disasters.",
@@ -90,17 +84,23 @@ REFERENCE_CLAUSES: Dict[str, List[str]] = {
         "Performance of obligations shall be suspended for the duration of the force majeure event.",
         "Events of force majeure include strikes, lockouts, supply chain failures, earthquakes, and government actions."
     ],
+    "severability": [
+        "If any provision of this Agreement is held to be invalid or unenforceable, the remaining provisions remain in full force.",
+        "The invalidity of any term shall not affect the validity or enforceability of other provisions of this contract.",
+        "The parties shall negotiate in good faith to replace any unenforceable provision with a valid equivalent.",
+        "The terms of this contract are severable; invalidity of one clause does not void the entire agreement."
+    ],
+    "non_solicitation": [
+        "During the term and for one year thereafter, neither party shall solicit the employees of the other.",
+        "The Consultant agrees not to hire, solicit, or attempt to hire any staff or contractors of the Client.",
+        "No party shall induce or solicit customers, suppliers, or partners of the other party to terminate relationships.",
+        "Employee covenants not to solicit any current clients of the company for a period of 12 months after departure."
+    ],
     "assignment": [
         "Neither party may assign or transfer this Agreement without the prior written consent of the other.",
         "This Agreement shall be binding upon and inure to the benefit of the successors and permitted assigns.",
         "Any attempted assignment or delegation in violation of this section shall be null and void.",
         "Consent to assignment shall not be unreasonably withheld, conditioned, or delayed by either party."
-    ],
-    "entire_agreement": [
-        "This Agreement constitutes the entire agreement between the parties with respect to the subject matter.",
-        "This contract supersedes all prior agreements, oral or written representations, and understandings.",
-        "No modification, amendment, or waiver of any provision shall be effective unless in writing and signed.",
-        "This document represents the final and complete expression of the agreement between the parties."
     ]
 }
 
