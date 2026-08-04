@@ -14,6 +14,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
+# pyrefly: ignore [missing-import]
 from fastapi.testclient import TestClient
 from main import app
 from classification.classifier import ClauseClassifier
@@ -57,7 +58,7 @@ test_cases = [
     ),
     (
         "The vendor will indemnify and hold harmless the buyer from all damages.",
-        "indemnity",
+        "indemnification",
     ),
     (
         "Employee shall not engage in any competing business in the restricted area.",
@@ -69,7 +70,7 @@ test_cases = [
     ),
     (
         "The liability of the service provider is capped at the fees paid.",
-        "limitation_of_liability",
+        "liability",
     ),
     (
         "Governed by and construed in accordance with New York law.",

@@ -45,17 +45,17 @@ class RiskRule:
 # Base risk scores for each of the 12 clause types
 BASE_RISK_SCORES: Dict[str, int] = {
     "termination": 40,
-    "indemnity": 60,
+    "indemnification": 60,
     "non_compete": 70,
     "confidentiality": 30,
-    "limitation_of_liability": 55,
-    "payment_terms": 35,
+    "liability": 55,
+    "payment": 35,
     "governing_law": 20,
     "intellectual_property": 50,
     "force_majeure": 15,
-    "severability": 10,
-    "non_solicitation": 65,
     "assignment": 25,
+    "warranty": 20,
+    "entire_agreement": 10,
     "other": 15,  # Fallback class
 }
 
@@ -71,7 +71,7 @@ RISK_RULES: Dict[str, List[RiskRule]] = {
         RiskRule("90 days notice", -20, "90-day notice period (reduces risk)"),
         RiskRule("material breach", 0, "Standard termination for material breach"),
     ],
-    "indemnity": [
+    "indemnification": [
         RiskRule("indemnify", 5, "Indemnification obligation"),
         RiskRule("hold harmless", 5, "Hold harmless obligation"),
         RiskRule("sole control", 15, "Indemnifying party retains sole control of defense"),
@@ -94,14 +94,14 @@ RISK_RULES: Dict[str, List[RiskRule]] = {
         RiskRule("compelled by law", -10, "Standard exclusion for legally compelled disclosure (reduces risk)"),
         RiskRule("already in the possession", -5, "Standard exclusion for pre-existing knowledge (reduces risk)"),
     ],
-    "limitation_of_liability": [
+    "liability": [
         RiskRule("unlimited", 30, "Unlimited liability under certain conditions"),
         RiskRule("consequential damages", 10, "Disclaimer or exclusion of consequential damages"),
         RiskRule("limited to the fees", -15, "Liability capped at fees paid (reduces risk)"),
         RiskRule("no liability", 25, "Complete disclaimer of all liability"),
         RiskRule("cap of", -10, "Explicit monetary liability cap (reduces risk)"),
     ],
-    "payment_terms": [
+    "payment": [
         RiskRule("interest", 10, "Interest on late payments"),
         RiskRule("late fee", 10, "Late payment penalty fee"),
         RiskRule("within 30 days", -5, "Standard 30-day payment term (reduces risk)"),
@@ -126,20 +126,21 @@ RISK_RULES: Dict[str, List[RiskRule]] = {
         RiskRule("labor dispute", 5, "Labor disputes included in force majeure"),
         RiskRule("terminate if", 10, "Right to terminate if force majeure exceeds limit"),
     ],
-    "severability": [
-        RiskRule("invalid or unenforceable", 0, "Standard severability terms"),
-        RiskRule("remaining provisions", -5, "Enforceability of remaining terms (reduces risk)"),
-    ],
-    "non_solicitation": [
-        RiskRule("shall not solicit", 10, "Active non-solicitation restriction"),
-        RiskRule("not hire", 10, "Prohibition on hiring employees"),
-        RiskRule("customers", 15, "Non-solicitation of clients/customers"),
-        RiskRule("12 months", 5, "One-year non-solicitation duration"),
-    ],
     "assignment": [
         RiskRule("without prior written consent", 10, "Assignment requires consent"),
         RiskRule("shall not assign", 5, "General restriction on assignment"),
         RiskRule("permitted assigns", -5, "Binding on successors and assigns (reduces risk)"),
+    ],
+    "warranty": [
+        RiskRule("as-is", 15, "Services/Goods provided on an as-is basis without warranty"),
+        RiskRule("disclaim", 10, "Broad disclaimer of merchantability/fitness"),
+        RiskRule("professional manner", -5, "Warranty of professional performance (reduces risk)"),
+        RiskRule("ninety days", -5, "Limited warranty period (reduces risk)"),
+    ],
+    "entire_agreement": [
+        RiskRule("entire agreement", -5, "Standard entire agreement clause (reduces risk)"),
+        RiskRule("supersedes", -5, "Clause explicitly supersedes prior representations (reduces risk)"),
+        RiskRule("unless in writing", 0, "Standard amendment requirements"),
     ],
 }
 
