@@ -12,12 +12,16 @@
     "prisma:migrate:deploy": "prisma migrate deploy"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1101.0",
     "@prisma/client": "^5.10.0",
     "bcrypt": "^5.1.1",
+    "bullmq": "^6.0.6",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.18.3",
+    "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.2",
+    "multer": "^2.2.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0",
     "zod": "^3.22.4"
@@ -27,6 +31,7 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.6",
+    "@types/multer": "^2.2.0",
     "@types/node": "^20.11.24",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.6",
