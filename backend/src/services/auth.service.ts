@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { prisma } from "../config/db";
-import { ConflictError, UnauthorizedError } from "../utils/errors";
+import { ConflictError, UnauthorizedError, InvalidCredentialsError } from "../utils/errors";
 
 const SALT_ROUNDS = 10;
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "default_access_secret";
@@ -106,12 +106,12 @@ export class AuthService {
   public static async login(email: string, password: string): Promise<{ user: UserResponse; tokens: AuthTokens }> {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      throw new UnauthorizedError("Invalid email or password");
+      throw new InvalidCredentialsError();
     }
 
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
-      throw new UnauthorizedError("Invalid email or password");
+      throw new InvalidCredentialsError();
     }
 
     const tokens = this.generateTokens(user.id, user.email);
