@@ -91,17 +91,9 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               onClick={() => setDropdownOpen((prev) => !prev)}
               className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
-              {user.avatar ? (
-                <img
-                  src={user.avatar}
-                  alt={user.name}
-                  className="w-8 h-8 rounded-lg object-cover ring-2 ring-indigo-500/30"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-sm">
-                  {user.name?.charAt(0) || 'U'}
-                </div>
-              )}
+              <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-sm ring-2 ring-indigo-500/30">
+                {user.name?.charAt(0).toUpperCase() || 'U'}
+              </div>
               <div className="hidden sm:flex flex-col text-left">
                 <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">
                   {user.name}

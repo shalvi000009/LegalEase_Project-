@@ -44,10 +44,6 @@ export const DashboardPage: React.FC = () => {
           className="p-8 rounded-3xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-slate-900 text-white shadow-xl shadow-indigo-500/10 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6"
         >
           <div className="space-y-2 max-w-xl z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold text-indigo-200">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Week 1 Environment Setup Complete</span>
-            </div>
             <h1 className="text-3xl font-extrabold tracking-tight">
               Welcome back, {user?.name || 'Legal Engineer'}!
             </h1>
@@ -119,7 +115,6 @@ export const DashboardPage: React.FC = () => {
               >
                 Go to Upload Pipeline
               </Button>
-              <Badge variant="info">Week 2 Target Feature</Badge>
             </div>
           </Card>
         </motion.div>

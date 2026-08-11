@@ -14,7 +14,7 @@ import { useAuth } from '../../hooks/useAuth';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-  { icon: UploadCloud, label: 'Upload Contract', href: '/upload', badge: 'Active' },
+  { icon: UploadCloud, label: 'Upload Contract', href: '/upload' },
   { icon: FileText, label: 'My Documents', href: '/documents' },
   { icon: Shield, label: 'Contract Vault', href: '/vault' },
   { icon: Settings, label: 'Settings', href: '/settings' },
@@ -78,16 +78,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onCloseMob
 
       {/* Footer Profile / Workspace Info */}
       <div className="space-y-3">
-        <div className="p-3.5 rounded-2xl bg-gradient-to-tr from-indigo-50 to-purple-50 dark:from-indigo-950/40 dark:to-purple-950/40 border border-indigo-100 dark:border-indigo-900/50">
-          <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-bold text-xs">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-            <span>LegalEase Pro</span>
-          </div>
-          <p className="text-[11px] text-indigo-600/80 dark:text-indigo-400 mt-0.5">
-            Week 2 Upload Pipeline Operational
-          </p>
-        </div>
-
         {user && (
           <div className="flex items-center gap-3 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60">
             <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs">

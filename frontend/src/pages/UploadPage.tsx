@@ -129,10 +129,6 @@ export const UploadPage: React.FC = () => {
           >
             Back to Dashboard
           </Button>
-
-          <Badge variant="info" size="md">
-            <Sparkles className="w-3.5 h-3.5 mr-1 inline animate-spin" /> Week 2 Pipeline Active
-          </Badge>
         </div>
 
         {/* Hero Section with Typewriter Effect */}

@@ -35,7 +35,7 @@ const MOCK_USER = {
   id: 'usr_mock_12345',
   name: 'Krina Patel',
   email: 'krina@legalease.ai',
-  avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
+  avatar: null,
   role: 'Frontend Lead',
 };
 
