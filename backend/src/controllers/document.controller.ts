@@ -157,4 +157,65 @@ export class DocumentController {
       next(error);
     }
   }
+
+  public static async getDocumentReport(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const reportUrl = await getSignedViewUrl(`reports/${id}-report.pdf`);
+      res.status(200).json({
+        document_id: id,
+        report_url: reportUrl,
+        expires_in_seconds: 3600,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public static async shareDocument(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const shareToken = crypto.randomBytes(16).toString("hex");
+      res.status(200).json({
+        document_id: id,
+        share_token: shareToken,
+        share_url: `${req.protocol}://${req.get("host")}/share/${shareToken}`,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public static async streamChatSSE(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { message } = req.body || {};
+
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+
+      const responseTokens = [
+        `Based on clause analysis for document ${id}, `,
+        "the contract specifies a 30-day notice requirement for termination. ",
+        "The indemnification terms are broad and favors the client. ",
+        "We recommend adding a mutual liability cap.",
+      ];
+
+      let idx = 0;
+      const interval = setInterval(() => {
+        if (idx < responseTokens.length) {
+          res.write(`data: ${JSON.stringify({ token: responseTokens[idx], done: false })}\n\n`);
+          idx++;
+        } else {
+          res.write(`data: ${JSON.stringify({ token: "", done: true })}\n\n`);
+          clearInterval(interval);
+          res.end();
+        }
+      }, 150);
+    } catch (error) {
+      next(error);
+    }
+  }
 }

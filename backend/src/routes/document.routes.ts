@@ -231,5 +231,8 @@ router.get("/", requireAuth, DocumentController.listDocuments);
  */
 router.get("/:id", requireAuth, DocumentController.getDocumentStatus);
 router.get("/:id/view", requireAuth, DocumentController.getDocumentViewUrl);
+router.get("/:id/report", requireAuth, DocumentController.getDocumentReport);
+router.post("/:id/share", requireAuth, DocumentController.shareDocument);
+router.post("/:id/chat", requireAuth, DocumentController.streamChatSSE);
 
 export default router;
