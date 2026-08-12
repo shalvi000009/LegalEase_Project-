@@ -129,7 +129,6 @@ export const startAnalysisWorker = (): Worker => {
           where: { id: documentId },
           data: { status: "done" },
         });
-
         console.log(
           `[Worker] Successfully completed processing document ${documentId}`
         );

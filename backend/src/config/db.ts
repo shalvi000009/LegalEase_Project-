@@ -9,6 +9,8 @@ class MockPrisma {
   private documents: any[] = [];
   private analyses: any[] = [];
   private clauses: any[] = [];
+  private chatSessions: any[] = [];
+  private messages: any[] = [];
 
   public user = {
     findUnique: async ({ where }: any) => {
@@ -126,6 +128,67 @@ class MockPrisma {
     },
     findMany: async ({ where }: any) => {
       return this.clauses.filter(c => c.analysis_id === where.analysis_id);
+    }
+  };
+
+  public chatSession = {
+    create: async ({ data }: any) => {
+      const cs = {
+        id: data.id || "mock-chat-session-uuid-" + Date.now(),
+        document_id: data.document_id,
+        created_at: new Date(),
+      };
+      this.chatSessions.push(cs);
+      return cs;
+    },
+    findUnique: async ({ where, include }: any) => {
+      const cs = this.chatSessions.find(s => s.id === where.id);
+      if (!cs) return null;
+      const copy = { ...cs };
+      if (include && include.document) {
+        copy.document = this.documents.find(d => d.id === cs.document_id);
+      }
+      return copy;
+    },
+    findFirst: async ({ where, include }: any) => {
+      const cs = this.chatSessions.find(s => s.id === where.id || s.document_id === where.document_id);
+      if (!cs) return null;
+      const copy = { ...cs };
+      if (include && include.document) {
+        copy.document = this.documents.find(d => d.id === cs.document_id);
+      }
+      return copy;
+    }
+  };
+
+  public message = {
+    create: async ({ data }: any) => {
+      const msg = {
+        id: data.id || "mock-message-uuid-" + Date.now(),
+        chat_session_id: data.chat_session_id,
+        sender: data.sender,
+        content: data.content,
+        created_at: new Date(),
+      };
+      this.messages.push(msg);
+      return msg;
+    },
+    findMany: async ({ where, orderBy }: any) => {
+      let filtered = this.messages.filter(m => m.chat_session_id === where.chat_session_id);
+      filtered.sort((a, b) => a.created_at.getTime() - b.created_at.getTime());
+      return filtered;
+    },
+    findFirst: async ({ where, orderBy }: any) => {
+      let filtered = this.messages.filter(m => m.chat_session_id === where.chat_session_id);
+      if (where.sender) {
+        filtered = filtered.filter(m => m.sender === where.sender);
+      }
+      if (orderBy && orderBy.created_at === "desc") {
+        filtered.sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
+      } else {
+        filtered.sort((a, b) => a.created_at.getTime() - b.created_at.getTime());
+      }
+      return filtered[0] || null;
     }
   };
 

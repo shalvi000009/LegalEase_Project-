@@ -47,8 +47,9 @@ model Document {
   status     DocumentStatus @default(uploaded)
   created_at DateTime       @default(now()) @map("created_at")
 
-  user       User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  analyses   Analysis[]
+  user          User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  analyses      Analysis[]
+  chat_sessions ChatSession[]
 
   @@map("documents")
 }
@@ -99,4 +100,27 @@ model Clause {
   analysis       Analysis     @relation(fields: [analysis_id], references: [id], onDelete: Cascade)
 
   @@map("clauses")
+}
+
+model ChatSession {
+  id          String    @id @default(uuid()) @db.Uuid
+  document_id String    @map("document_id") @db.Uuid
+  created_at  DateTime  @default(now()) @map("created_at")
+
+  document    Document  @relation(fields: [document_id], references: [id], onDelete: Cascade)
+  messages    Message[]
+
+  @@map("chat_sessions")
+}
+
+model Message {
+  id              String      @id @default(uuid()) @db.Uuid
+  chat_session_id String      @map("chat_session_id") @db.Uuid
+  sender          String      // "user" | "ai"
+  content         String      @db.Text
+  created_at      DateTime    @default(now()) @map("created_at")
+
+  chat_session    ChatSession @relation(fields: [chat_session_id], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
 }
