@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
 import { prisma } from "../config/db";
-import { uploadFile } from "../config/s3";
+import { uploadFile, getSignedViewUrl } from "../config/s3";
 import { enqueueAnalysisJob } from "../config/queue";
 import { BadRequestError, NotFoundError } from "../utils/errors";
 import { AuthenticatedRequest } from "../middleware/auth";
@@ -135,6 +135,23 @@ export class DocumentController {
           limit,
           totalPages: Math.ceil(total / limit),
         },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public static async getDocumentViewUrl(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const document = await prisma.document.findFirst({
+        where: { id },
+      });
+      const url = document?.s3_key ? await getSignedViewUrl(document.s3_key) : "";
+      res.status(200).json({
+        document_id: id,
+        url,
+        expires_in_seconds: 3600,
       });
     } catch (error) {
       next(error);

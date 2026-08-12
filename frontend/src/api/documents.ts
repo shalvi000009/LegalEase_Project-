@@ -154,3 +154,23 @@ export async function getDocument(docId: string): Promise<Document> {
     updatedAt: new Date().toISOString(),
   };
 }
+
+/**
+ * Fetch Pre-signed S3 View URL for PDF Viewer
+ * Uses GET /api/v1/documents/{id}/view
+ */
+export async function getDocumentViewUrl(docId: string): Promise<{ url: string; documentId: string }> {
+  try {
+    const res = await apiClient.get(`/documents/${docId}/view`);
+    return {
+      url: res.data?.url || '',
+      documentId: docId,
+    };
+  } catch (error) {
+    console.warn(`GET /api/v1/documents/${docId}/view fallback`);
+    return {
+      url: '',
+      documentId: docId,
+    };
+  }
+}

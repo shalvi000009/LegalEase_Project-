@@ -4,7 +4,6 @@ import toast from 'react-hot-toast';
 import { ArrowLeft, Sparkles, ShieldCheck, Zap } from 'lucide-react';
 import { MainLayout } from '../components/layout/MainLayout';
 import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge';
 import { FileDropzone } from '../components/upload/FileDropzone';
 import { FilePreview } from '../components/upload/FilePreview';
 import { UploadProgress } from '../components/upload/UploadProgress';

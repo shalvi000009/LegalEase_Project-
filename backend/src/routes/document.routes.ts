@@ -230,5 +230,6 @@ router.get("/", requireAuth, DocumentController.listDocuments);
  *               message: "Document not found or access denied"
  */
 router.get("/:id", requireAuth, DocumentController.getDocumentStatus);
+router.get("/:id/view", requireAuth, DocumentController.getDocumentViewUrl);
 
 export default router;

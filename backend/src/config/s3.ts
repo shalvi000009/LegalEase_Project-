@@ -55,3 +55,10 @@ export const uploadFile = async (key: string, buffer: Buffer, contentType: strin
   }));
   return key;
 };
+
+export const getSignedViewUrl = async (key: string): Promise<string> => {
+  if (isMock || !endpoint) {
+    return `/api/v1/documents/sample-view`;
+  }
+  return `${endpoint}/${bucketName}/${key}`;
+};
