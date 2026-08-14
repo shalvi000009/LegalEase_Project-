@@ -61,7 +61,11 @@ from pydantic import BaseModel, Field
 from extraction.chunker import chunk_stats, chunk_text
 from extraction.embeddings import embed_and_upsert
 from extraction.ocr_preprocessor import preprocess_and_ocr
-from extraction.pdf_extractor import extract_text_from_pdf, is_scanned_pdf
+from extraction.pdf_extractor import (
+    extract_text_from_pdf,
+    extract_text_from_scanned_pdf,
+    is_scanned_pdf,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -230,25 +234,12 @@ async def extract_document(request: ExtractRequest) -> ExtractResponse:
         if suffix == ".pdf":
             # Heuristic: check if the PDF is digital or scanned
             if is_scanned_pdf(str(local_file)):
-                # Scanned PDF → rasterise first page and run OCR pipeline
+                # Scanned PDF → rasterise pages and run OCR pipeline
                 logger.info("Scanned PDF detected; routing through OCR pipeline.")
-                # Rasterise via PyMuPDF then pass as image array
-                import fitz as _fitz  # type: ignore[import-untyped]
-                doc_fitz = _fitz.open(str(local_file))
-                page = doc_fitz.load_page(0)
-                mat = _fitz.Matrix(2.0, 2.0)  # 2× zoom for better OCR quality
-                pix = page.get_pixmap(matrix=mat)
-                import numpy as _np
-                import cv2 as _cv2
-                img_bytes = pix.tobytes("png")
-                arr = _np.frombuffer(img_bytes, _np.uint8)
-                img_bgr = _cv2.imdecode(arr, _cv2.IMREAD_COLOR)
-                doc_fitz.close()
-
-                ocr_result = preprocess_and_ocr(img_bgr)
-                full_text = ocr_result["text"]
+                ocr_result = extract_text_from_scanned_pdf(str(local_file))
+                full_text = ocr_result["full_text"]
                 pipeline_used = "ocr"
-                page_count = None
+                page_count = ocr_result["page_count"]
             else:
                 # Digital PDF — direct PyMuPDF extraction
                 result = extract_text_from_pdf(str(local_file))
