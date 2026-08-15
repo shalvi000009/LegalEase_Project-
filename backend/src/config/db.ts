@@ -71,6 +71,9 @@ class MockPrisma {
     findFirst: async ({ where }: any) => {
       return this.documents.find(d => d.id === where.id && d.user_id === where.user_id) || null;
     },
+    findUnique: async ({ where }: any) => {
+      return this.documents.find(d => d.id === where.id) || null;
+    },
     findMany: async ({ where, skip, take }: any) => {
       const filtered = this.documents.filter(d => d.user_id === where.user_id);
       return filtered.slice(skip || 0, (skip || 0) + (take || 10));
@@ -158,6 +161,16 @@ class MockPrisma {
         copy.document = this.documents.find(d => d.id === cs.document_id);
       }
       return copy;
+    },
+    findMany: async ({ where, include }: any) => {
+      const filtered = this.chatSessions.filter(s => s.document_id === where.document_id);
+      return filtered.map(s => {
+        const copy = { ...s };
+        if (include && include.messages) {
+          copy.messages = this.messages.filter(m => m.chat_session_id === s.id);
+        }
+        return copy;
+      });
     }
   };
 
