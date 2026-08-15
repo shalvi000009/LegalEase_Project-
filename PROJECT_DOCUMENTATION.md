@@ -1,247 +1,135 @@
-# 📘 LegalEase: Complete Project Documentation
+# LegalEase Project Documentation & Architecture Guide
 
-Welcome to the **LegalEase** project documentation! This guide was created specifically to explain, in clear and simple English, the entire architecture, technologies, and concepts behind the LegalEase platform. 
-
-Whether you are looking to understand the overall picture or dive into the smallest technical details, this document covers everything. Since this project was created using "vibe coding," this handbook will bridge any gaps and ensure you are fully in control of the codebase.
+Welcome to the **LegalEase** project documentation. If you built this project using "vibe coding," this document is designed to explain exactly how every piece of the system fits together, what technologies are used, the core legal and software concepts behind them, and why those technologies were chosen.
 
 ---
 
-## 🗺️ Table of Contents
-1. [What We Built (The Core Vision)](#1-what-we-built-the-core-vision)
-2. [How We Built It (High-Level Architecture)](#2-how-we-built-it-high-level-architecture)
-3. [Deep-Dive: The Frontend Application](#3-deep-dive-the-frontend-application)
-4. [Deep-Dive: The Backend API Server](#4-deep-dive-the-backend-api-server)
-5. [Deep-Dive: The AI/ML Service](#5-deep-dive-the-aiml-service)
-6. [Why We Chose This Stack (Technology Comparisons)](#6-why-we-chose-this-stack-technology-comparisons)
-7. [Database Schema (The Data Model)](#7-database-schema-the-data-model)
-8. [The AI/ML Pipeline: Visualized](#8-the-aiml-pipeline-visualized)
+## 📌 1. Project Overview & What We Built
 
----
+**LegalEase** is an AI-powered legal contract analysis platform. It helps users upload contracts (PDFs or images), automatically extracts the text, identifies important clauses (like liability, confidentiality, or termination), scores their risk level, checks for typical missing clauses, and allows users to chat with the document using an AI assistant.
 
-## 1. What We Built (The Core Vision)
-
-**LegalEase** is an **AI-powered legal contract analysis platform**. 
-
-### The Problem It Solves
-Contracts are long, boring, and filled with dense "legalese" (complex legal language). Hiring a lawyer to read a 50-page agreement to find hidden risks is expensive and slow. If you sign a contract without reading it carefully, you might agree to extreme terms like:
-* **Unlimited liability:** If something goes wrong, you could lose everything.
-* **Perpetual non-competes:** You can never work for a competitor or start a similar business anywhere in the world forever.
-* **Unfair termination clauses:** The other party can end the contract instantly, but you have to give a 90-day notice.
-
-### The Solution
-LegalEase lets you upload any contract (as a digital PDF, scanned PDF, or raw image). Within seconds, the system:
-1. **Extracts the text** from the file (using advanced OCR if it's a scanned paper/photo).
-2. **Splits the contract** into separate readable paragraphs or sections (chunks).
-3. **Classifies** each chunk into one of 12 standard legal categories (e.g., Termination, Liability, Confidentiality).
-4. **Scores the risk** of each clause using a rule-engine that looks for dangerous keywords and shapes the score.
-5. **Calculates an overall risk score** for the contract so you immediately know if it's safe to sign.
-6. **Displays the results** in a clean, modern dashboard highlighting exactly what the risky parts say and why they are dangerous.
-
----
-
-## 2. How We Built It (High-Level Architecture)
-
-The project is structured as a **distributed microservice architecture**. It is split into separate, independent services that talk to each other.
-
-```mermaid
-graph TD
-    Client[React Frontend - Port 5173] -->|API Requests| Express[Express Backend - Port 4000]
-    Express -->|Read/Write| Postgres[(PostgreSQL DB)]
-    Express -->|Store/Retrieve Files| MinIO[(MinIO S3 Storage)]
-    Express -->|Queue Jobs| Redis[(Redis Queue - BullMQ)]
-    
-    Worker[BullMQ Worker] <-->|Fetch Job / Update Status| Redis
-    Worker -->|Post Document| Fast[FastAPI AI Service - Port 8000]
-    Fast -->|OCR / BERT Classification| Worker
-    Worker -->|Save Analysis & Clauses| Postgres
-```
-
-### The Async Worker Pattern (Why we use it)
-Analyzing documents and running AI models (especially OCR and deep learning) is CPU-heavy and slow. If a user uploads a PDF and the backend web server tries to run the AI analysis *during the request*, the user's browser will freeze, wait for 30 seconds, and eventually time out. 
-
-To prevent this, we use the **Asynchronous Worker Pattern**:
-1. **Upload:** The user uploads a file through the Frontend.
-2. **Immediate Success:** The Backend saves the file in MinIO storage, creates a database entry with a status of `uploaded`, queues a job in Redis using **BullMQ**, and tells the frontend *"Got it! I am processing it now"* (Status `201 Created`).
-3. **Processing:** The frontend redirects the user to a loading screen (`/processing/:id`) that periodically asks the backend *"Is it done yet?"*
-4. **Background Execution:** In the background, a separate Node.js process (the **BullMQ Worker**) picks up the job, changes the database status to `processing`, and calls the **AI Service** via HTTP.
-5. **Completion:** The AI Service extracts, chunks, classifies, and scores the contract. It returns the structured JSON data to the worker. The worker saves the results to **PostgreSQL** and updates the document status to `done`.
-6. **Display:** The frontend detects the `done` status and renders the beautiful `/results/:id` page.
-
----
-
-## 3. Deep-Dive: The Frontend Application
-
-Located in: [`/frontend`](file:///c:/Users/hp/OneDrive/Desktop/.vscode/LegalEase/frontend)
-
-The frontend is a single-page application (SPA) built with **React** and **TypeScript**, powered by **Vite** for blazing-fast development builds.
-
-### Key Technologies
-* **Vite**: Used instead of Create React App (CRA) because it uses native ES modules to compile code in milliseconds, offering a much faster developer experience.
-* **Tailwind CSS**: A utility-first CSS framework. It allows us to build gorgeous, responsive designs right inside the HTML/TSX files without writing separate stylesheet files.
-* **Framer Motion**: An animation library used to make page transitions and loading skeletons feel fluid, modern, and premium.
-* **Zustand**: A lightweight state management library (simpler and faster than Redux). We use it to store user authentication state, document lists, and active analysis results across components.
-* **React Query (`@tanstack/react-query`)**: Manages our server state. It handles automatic caching, refetching, and loading indicators when requesting data from the backend.
-
-### Crucial Feature: Token Interceptors and Auto-Refresh
-To avoid asking the user to log in again every 15 minutes, the frontend uses an **Axios interceptor** (`/frontend/src/api/client.ts`):
-1. Every time a request is sent, the interceptor automatically attaches the user's `accessToken` to the request headers.
-2. If the backend responds with a `401 Unauthorized` (meaning the token has expired), the interceptor pauses all outgoing API requests.
-3. It makes a secret request to the backend `/auth/refresh` endpoint using a long-lived `refreshToken` stored in memory.
-4. If successful, it receives a fresh `accessToken`, updates the Zustand store, and automatically retries all the paused requests. The user never notices anything happened!
-
----
-
-## 4. Deep-Dive: The Backend API Server
-
-Located in: [`/backend`](file:///c:/Users/hp/OneDrive/Desktop/.vscode/LegalEase/backend)
-
-The backend is built with **Node.js**, **Express**, and **TypeScript**. It serves as the secure gateway for the application.
-
-### Key Technologies
-* **Prisma ORM**: Object-Relational Mapper. Instead of writing raw SQL queries, Prisma lets us write type-safe TypeScript code (`prisma.document.create()`). It also manages our PostgreSQL database tables and migrations automatically.
-* **BullMQ & Redis**: BullMQ is a robust queue library for Node.js. It stores pending tasks in Redis (an in-memory database). If the backend crashes, Redis retains the queue so no jobs are lost.
-* **Multer**: Express middleware that processes incoming file uploads (`multipart/form-data`) and loads them as temporary memory buffers.
-* **AWS SDK S3 Client (`@aws-sdk/client-s3`)**: Used to communicate with MinIO. MinIO is an open-source clone of Amazon S3 that we run locally. We upload the file buffers directly here.
-* **Zod**: A schema validation library. It validates incoming user input (e.g. checking if registration emails are valid and passwords are long enough) before the controllers touch them.
-* **JSON Web Tokens (JWT)**: Used for secure, stateless user sessions. We issue short-lived Access Tokens (15 minutes) and long-lived Refresh Tokens (7 days) saved in the database.
-
----
-
-## 5. Deep-Dive: The AI/ML Service
-
-Located in: [`/ai-service`](file:///c:/Users/hp/OneDrive/Desktop/.vscode/LegalEase/ai-service)
-
-The AI/ML service is a **Python FastAPI** microservice. It is dedicated to heavy computational processing: reading PDFs, performing OCR, running deep learning models, and running the risk calculations.
-
-### Core Pipelines
-
-#### 1. Text Extraction Pipeline ([`/ai-service/routers/internal_extract.py`](file:///c:/Users/hp/OneDrive/Desktop/.vscode/LegalEase/ai-service/routers/internal_extract.py))
-When a document is uploaded, we must get its raw text. But PDFs are notoriously tricky. We use a hybrid approach:
-* **Digital PDFs (Text-Based):** We open the PDF using **PyMuPDF** (`fitz`). If it has readable text (more than 100 characters), we extract it directly. This takes milliseconds.
-* **Scanned PDFs & Images (OCR):** If the character count is below 100, the file is likely a scanned photo or image. We run it through a custom **OpenCV Image Processing Pipeline**:
-  1. **Corner Detection:** OpenCV searches for the largest 4-sided shape in the image (the paper sheet).
-  2. **Perspective Warp:** It warps and flattens the paper crop into a clean rectangle (simulating a flat document scan).
-  3. **Deskewing:** It calculates if the lines of text are tilted, and rotates the image to make them perfectly horizontal.
-  4. **Contrast Enhancement:** It uses **CLAHE** (Contrast Limited Adaptive Histogram Equalization) on the L-channel of the LAB color space to make text dark and the background bright.
-  5. **Tesseract OCR:** Finally, it passes the preprocessed image to **PyTesseract** to read the letters. Preprocessing increases OCR accuracy from ~60% to ~98%.
-
-#### 2. Clause Classification Pipeline ([`/ai-service/classification/classifier.py`](file:///c:/Users/hp/OneDrive/Desktop/.vscode/LegalEase/ai-service/classification/classifier.py))
-Once the text is extracted, it is split into chunks of text. We classify each chunk into one of 12 categories (Liability, Governing Law, Termination, etc.):
-* **Primary Path (Legal-BERT):** We load a specialized deep learning transformer model from Hugging Face: `nlpaueb/legal-bert-base-uncased`. This model was pre-trained on billions of words from legal contracts and case files.
-  - We precompute "prototype vectors" by averaging the BERT embeddings of archetypal sentences for each clause type.
-  - We encode the incoming clause chunk into a vector and compute the **Cosine Similarity** between the chunk and our 12 class prototypes.
-  - We apply a sharp Softmax function to translate similarities into confidence percentages.
-* **Fallback Path (TF-IDF):** If the server runs out of GPU memory or doesn't have PyTorch installed, it falls back to a **TF-IDF Vectorizer** (scikit-learn). It counts word frequencies, weights them, and calculates cosine similarity against the prototypes.
-
-#### 3. Risk Engine Pipeline ([/ai-service/classification/risk_scoring.py](file:///c:/Users/hp/OneDrive/Desktop/.vscode/LegalEase/ai-service/classification/risk_scoring.py))
-Once a clause is classified, we calculate its risk score (0 to 100):
-1. **Base Score:** Each clause type has a starting risk score (e.g., `non_compete` starts at 70, while `severability` starts at 10).
-2. **Keyword Rules:** We run keyword checks. For example, if a `termination` clause contains the words *"convenience"* or *"without cause"*, we add `+20` to the risk score. If it contains *"30 days notice"*, we subtract `-10`.
-3. **Confidence Adjustment:** If the BERT classifier has low confidence in its classification (`< 40%`), we blend the calculated score toward a safe medium risk of `35` to avoid false positives.
-4. **Overall Score Aggregation:** How do we combine the scores of 20 clauses into one overall contract score? A simple average is dangerous: if a contract has 19 safe clauses (score 10) and 1 highly dangerous clause (score 100), the average is only `18` (low risk). To prevent this dilution, we use a weighted formula:
-   $$\text{Overall Score} = (0.6 \times \text{Average Clause Score}) + (0.4 \times \text{Max Clause Score})$$
-   This guarantees that a single high-risk clause pulls the entire contract score up to reflect potential danger.
-
----
-
-## 6. Why We Chose This Stack (Technology Comparisons)
-
-When building this project, we chose these technologies over common alternatives. Here is why:
-
-| Technology Chosen | Alternative Considered | Why Chosen |
-| :--- | :--- | :--- |
-| **Node.js (Express)** | Python (Django/Flask) | Node.js handles asynchronous API calls, websockets, and concurrent user routing much faster with a lower memory footprint. We keep Python strictly for AI tasks. |
-| **FastAPI** | Flask / Django | FastAPI is asynchronous, runs 2-3x faster than Flask, has native data validation (Pydantic), and automatically generates Interactive API documentation (`/docs`). |
-| **Prisma ORM** | TypeORM / Sequelize | Prisma generates actual TypeScript types based on our database schemas, preventing us from writing queries that request fields that do not exist. |
-| **BullMQ** | Celery / RabbitMQ | BullMQ runs natively in Node.js, uses Redis (which we already use for caching), and requires zero complex setups like Celery does. |
-| **MinIO** | Local Folder / Disk Storage | Local storage crashes if your container restarts. MinIO simulates Amazon S3. In production, we can switch to AWS S3 by changing only one line in the `.env` file without changing any code. |
-| **Legal-BERT** | OpenAI GPT API | Running a local transformer like Legal-BERT is completely free, does not violate client-attorney privilege by sending sensitive contracts to third-party servers, and is highly specialized. |
-
----
-
-## 7. Database Schema (The Data Model)
-
-Here is a simplified layout of the database tables managed by **Prisma** in PostgreSQL:
+### High-Level Architecture
+The system is divided into three main components:
+1. **Frontend (Client)**: The user interface where users upload documents, see analysis scores, download reports, and chat.
+2. **Backend (Server)**: The brain of the application that manages user accounts, handles document uploads, schedules background jobs, generates reports, and runs the APIs.
+3. **AI/ML Service (AI Engine)**: A Python service that performs text extraction, runs machine learning models (Legal-BERT), extracts clauses, calculates risks, and communicates with OpenAI for advanced analysis.
 
 ```
-[users]
-  - id (UUID, Primary Key)
-  - name (String)
-  - email (String, Unique)
-  - password_hash (String)
-  - created_at (Timestamp)
-
-[refresh_tokens]
-  - id (UUID, Primary Key)
-  - user_id (FK -> users.id)
-  - token_hash (String)
-  - expires_at (Timestamp)
-  - revoked_at (Timestamp, Nullable)
-
-[documents]
-  - id (UUID, Primary Key)
-  - user_id (FK -> users.id)
-  - filename (String)
-  - s3_key (String)
-  - status (Enum: uploaded, processing, done, failed)
-  - created_at (Timestamp)
-
-[analyses]
-  - id (UUID, Primary Key)
-  - document_id (FK -> documents.id)
-  - overall_risk_score (Integer)
-  - model_version (String)
-  - created_at (Timestamp)
-
-[clauses]
-  - id (UUID, Primary Key)
-  - analysis_id (FK -> analyses.id)
-  - clause_type (Enum: liability, termination, indemnity, etc.)
-  - risk_level (Enum: low, medium, high)
-  - risk_score (Integer, 0 to 100)
-  - original_text (Text)
-  - explanation (Text)
++-------------------------------------------------------------+
+|                     React Frontend (UI)                     |
++------------------------------+------------------------------+
+                               |
+                               | (HTTP REST & SSE Stream)
+                               v
++-------------------------------------------------------------+
+|                   Express Backend (APIs)                    |
++--------------+-------------------------------+--------------+
+               |                               |
+               | (Prisma)                      | (Redis/BullMQ Jobs)
+               v                               v
++--------------+-------------+   +-------------+--------------+
+|      PostgreSQL Database   |   |        Redis Queue         |
++----------------------------+   +-------------+--------------+
+                                               |
+                                               v
+                                 +-------------+--------------+
+                                 |    BullMQ Worker Thread    |
+                                 +-------------+--------------+
+                                               |
+                                               | (HTTP POST /analyze)
+                                               v
++-------------------------------------------------------------+
+|                Python FastAPI AI Service                    |
++--------------+-------------------------------+--------------+
+               |                               |
+               | (If Scanned PDF)              | (For Missing Clauses)
+               v                               v
++--------------+-------------+   +-------------+--------------+
+|     Tesseract OCR Engine   |   |     OpenAI GPT-4o API      |
++----------------------------+   +----------------------------+
 ```
-
-### Relationship Path
-A **User** uploads many **Documents**. Each **Document** has a status. When the status is `done`, it points to one **Analysis**. The **Analysis** contains a list of classified **Clauses**, detailing the individual risks, original text snippets, and explanations.
 
 ---
 
-## 8. The AI/ML Pipeline: Visualized
+## 🛠️ 2. Detailed Technical Stack & Why We Chose It
 
-Here is a step-by-step trace of what happens to a contract file after upload:
+### A. Frontend (User Interface)
+* **React + TypeScript + Vite**:
+  * *What it is*: A modern build tool (Vite) and library (React) for building interactive web pages.
+  * *Why we chose it*: Vite is incredibly fast compared to older setups (like Create React App). React is component-based, making it easy to build reusable UI elements like buttons, input fields, and chat boxes.
+* **Zustand (State Management)**:
+  * *What it is*: A very lightweight, fast, hooks-based state manager for React.
+  * *Why we chose it over Redux*: Redux requires a lot of boilerplate code (actions, reducers, stores). Zustand does the same job in 10 lines of code, making it simple, highly reactive, and easy to maintain.
+* **Vanilla CSS (Styling)**:
+  * *What it is*: Core CSS files without frameworks.
+  * *Why we chose it*: Vanilla CSS gives us absolute control over the styling and layouts, avoiding overhead from styling frameworks.
 
-```
-  [ Uploaded File ]
-         │
-         ▼
-  [ Check PDF Type ] ─── Chars < 100? (Scanned/Image) ───► [ OpenCV Image Preprocessing ]
-         │                                                            │
-         │ Chars >= 100 (Digital)                                     ▼
-         │                                                    [ PyTesseract OCR ]
-         ▼                                                            │
-  [ Extract Plain Text ] ◄─────────────────────────────────────────────┘
-         │
-         ▼
-  [ Text Splitter (Chunking) ] ──► [ LangChain Chunk Segments ]
-                                              │
-                                              ▼
-                                   [ Clause Classification ]
-                                   ├─ Legal-BERT (Vector Similarity)
-                                   └─ TF-IDF + Cosine Sim (Fallback)
-                                              │
-                                              ▼
-                                   [ Risk Rule Engine ]
-                                   ├─ Match Keyword Rules
-                                   └─ Apply Confidence Blend
-                                              │
-                                              ▼
-                                   [ Aggregate Document Risk ]
-                                   └─ 60% Avg + 40% Max Weighting
-                                              │
-                                              ▼
-                                   [ Store results in DB ]
-```
+### B. Backend (Business Logic & Orchestration)
+* **Node.js + Express + TypeScript**:
+  * *What it is*: A JavaScript/TypeScript server-side runtime (Node.js) and a simple routing framework (Express).
+  * *Why we chose it*: Express is simple, lightweight, and has a massive community. Writing both frontend and backend in TypeScript/JavaScript makes it easy to share interface definitions and concepts.
+* **Prisma (ORM)**:
+  * *What it is*: An Object-Relational Mapper that lets us interact with our PostgreSQL database using TypeScript functions instead of raw SQL queries.
+  * *Why we chose it*: Prisma auto-generates TypeScript types based on our database schema, preventing database syntax errors during compilation.
+* **BullMQ + Redis (Job Queues)**:
+  * *What it is*: A message queue (BullMQ) powered by a fast in-memory key-value database (Redis) to run background jobs.
+  * *Why we chose it*: Extracting text and running ML models on a 100-page PDF can take minutes. If we did this directly in the API request, the server would freeze or timeout. BullMQ allows us to respond immediately with "Uploading/Processing" and let a background worker process the file separately.
+* **Puppeteer (PDF Generation)**:
+  * *What it is*: A headless Chrome browser controlled by Node.js.
+  * *Why we chose it*: Building beautiful PDF pages manually in code is extremely difficult. Puppeteer lets us design the report using standard HTML and CSS, and then prints it to a PDF, producing a beautiful document.
+* **JSON Web Tokens (JWT)**:
+  * *What it is*: A secure token format containing encoded user information.
+  * *Why we chose it*: Used for logging in users securely (Access and Refresh tokens) and generating public, read-only expiring links for sharing document analyses.
 
-With this documentation, you now understand the exact core logic of the entire project! Feel free to review the codebase knowing how these files interact.
+### C. AI/ML Service (Engine)
+* **FastAPI (Python)**:
+  * *What it is*: A modern, fast web API framework for Python.
+  * *Why we chose it*: Python is the industry standard for machine learning. FastAPI is asynchronous and auto-generates documentation pages.
+* **PyMuPDF**:
+  * *What it is*: A fast Python PDF parser.
+  * *Why we chose it*: It is significantly faster than other libraries for extracting raw text from digital PDFs.
+* **Tesseract OCR + OpenCV**:
+  * *What it is*: An Optical Character Recognition engine (Tesseract) and an image processing library (OpenCV).
+  * *Why we chose it*: Standard text extraction fails on scanned PDFs (which are just images). OpenCV cleans up, binarizes (converts to black-and-white), and aligns the images so Tesseract can accurately extract text.
+* **Legal-BERT**:
+  * *What it is*: A BERT language model fine-tuned specifically on legal corpora (contracts, laws, cases).
+  * *Why we chose it*: Standard AI models don't understand dense legalese. Legal-BERT understands context, clause definitions, and risk signals much better than general-purpose small models.
+* **OpenAI GPT-4o**:
+  * *What it is*: OpenAI's state-of-the-art Large Language Model.
+  * *Why we chose it*: While Legal-BERT is great at classifying individual clauses, GPT-4o is used to look at the entire contract context, find what clauses are *missing* from a typical contract, and suggest smart questions for the user to ask.
+
+---
+
+## 🧠 3. Key Concepts & Workflows
+
+### 1. The Processing Pipeline (How a Contract is Analyzed)
+When you upload a file, the system goes through these steps:
+1. **Upload**: The user sends the file to the backend (`POST /api/v1/documents`). The backend saves it to storage (S3/MinIO) and creates a database record with status `uploaded`.
+2. **Queue**: The backend adds an analysis job to the BullMQ Redis queue and returns `201 Created` to the user.
+3. **Worker**: The BullMQ background worker picks up the job, marks the document status as `processing`, and calls the AI service.
+4. **Extraction (Digital vs Scanned)**: The AI service reads the PDF. If it has readable text, it extracts it. If it is empty (scanned), it runs OpenCV to clean the page and Tesseract OCR to read the text.
+5. **Classification & Risk**: The extracted text is split into paragraphs. Each paragraph is run through the Legal-BERT model to see if it is a specific clause type. If it is, a risk score is calculated using predefined risk rules.
+6. **Checklist & Missing Clauses**: The AI service compares the found clauses against a checklist (e.g. an employment agreement must have termination and non-compete clauses). Anything missing is flagged.
+7. **Save**: The worker saves the analysis results (overall score, model version, and clauses list) in the database and updates the document status to `done`.
+
+### 2. RAG (Retrieval-Augmented Generation) Chat
+RAG is a concept where instead of just asking an AI a general question, we first *retrieve* the most relevant sections of the contract and paste them into the AI's prompt. 
+* When the user asks a question (like "What is the liability limit?"), the system searches the database for clauses matching "liability".
+* It passes those specific clauses as context to the AI, so the AI responds based *only* on the uploaded contract, preventing hallucinations.
+* The response is streamed to the user character-by-character using **Server-Sent Events (SSE)**.
+
+---
+
+## 🔒 4. Document Sharing & Report Exports
+
+### Shareable Links
+To share an analysis report without giving someone your password:
+* You request a share link (`POST /api/v1/documents/:id/share`).
+* The server signs a **JWT token** containing the document ID, set to expire in 24 hours.
+* The recipient opens `GET /api/v1/share/:token`. The server decodes the token, verifies it hasn't expired, and fetches the document details and clauses from the database. No auth header is required!
+
+### PDF Reports
+When you request a download:
+* The server fetches all analysis data and chat history.
+* It injects this data into a beautiful, styled HTML template.
+* **Puppeteer** launches a headless Chrome browser in the background, renders that HTML template, prints it to a PDF buffer, and streams the binary PDF back to your browser as an attachment.

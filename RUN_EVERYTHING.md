@@ -1,213 +1,127 @@
-# ⚡ LegalEase Execution Guide (Run Everything)
+# LegalEase: Run Everything Guide
 
-This document provides clear, step-by-step instructions to run the **LegalEase** project. You will learn how to run the entire system at once, or how to run each specific service (Backend, Frontend, or AI/ML) individually depending on your needs.
-
----
-
-## 🗺️ Port & Address Reference
-
-When up and running, the services will occupy the following addresses on your local machine:
-
-| Service | Address / URL | Description / Notes |
-| :--- | :--- | :--- |
-| **Frontend Web App** | [http://localhost:5173](http://localhost:5173) | The user interface you open in the browser |
-| **Backend REST API** | [http://localhost:4000/api/v1](http://localhost:4000/api/v1) | Express backend server endpoint |
-| **API Interactive Docs** | [http://localhost:4000/docs](http://localhost:4000/docs) | Swagger Documentation for the backend APIs |
-| **AI Service Docs** | [http://localhost:8000/docs](http://localhost:8000/docs) | Swagger docs for FastAPI AI Service |
-| **MinIO Console** | [http://localhost:9001](http://localhost:9001) | S3 Storage Console (User: `minioadmin`, Pass: `minioadminpassword`) |
-| **PostgreSQL DB** | `localhost:5432` | Database (User: `postgres`, Pass: `postgrespassword`, DB: `legalease`) |
-| **Redis Cache** | `localhost:6379` | BullMQ queue connector |
+This guide explains how to start and run all parts of the **LegalEase** application:
+1. **Backing Databases & Queues** (PostgreSQL, Redis, MinIO)
+2. **Backend API Server** (Express)
+3. **Frontend Client** (React/Vite)
+4. **AI/ML Service** (Python FastAPI)
 
 ---
 
-## 🚀 Scenario 1: Run the Complete Project Stack (Recommended)
+## 🛠️ Step 1: Start the Backing Services (Database, Queue, Storage)
 
-This is the easiest and fastest way to start everything. We spin up backing databases and the backend server inside Docker, and run the Frontend and AI microservice locally.
+You can run these services either using **Docker** (recommended, easiest) or **Locally** (without Docker).
 
-### Prerequisites:
-1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and ensure it is running.
-2. Install [Node.js](https://nodejs.org/) (v18 or v20).
-3. Install [Python 3.10 or 3.11](https://www.python.org/downloads/).
+### Option A: Run using Docker (Recommended)
+If you have Docker Desktop installed and running:
+1. Open a terminal at the project root directory.
+2. Run the command:
+   ```bash
+   docker compose up -d
+   ```
+   *This starts PostgreSQL (database), Redis (queues), and MinIO (file storage) in the background.*
 
----
-
-### Step-by-Step Instructions:
-
-#### Step 1: Start Databases & Backend (via Docker)
-Open your terminal in the project root folder and execute:
-```bash
-docker compose up -d
-```
-> [!NOTE]
-> This command automatically pulls, installs, and starts PostgreSQL, Redis, MinIO storage, and builds the Node.js backend. The `-d` flag runs them silently in the background. Check if they are running with `docker compose ps`.
-
-#### Step 2: Set Up and Run the AI Microservice (Python FastAPI)
-Open a **new terminal window** in the project root and execute:
-```bash
-# 1. Navigate to the AI directory
-cd ai-service
-
-# 2. Create a virtual environment (keeps dependencies clean)
-python -m venv .venv
-
-# 3. Activate the virtual environment
-# On Windows (PowerShell):
-.venv\Scripts\Activate.ps1
-# On Windows (Command Prompt / CMD):
-.venv\Scripts\activate.bat
-# On macOS / Linux:
-source .venv/bin/activate
-
-# 4. Install all Python packages
-pip install -r requirements.txt
-
-# 5. Start the FastAPI microservice
-uvicorn main:app --reload --port 8000
-```
-
-#### Step 3: Set Up and Run the Frontend (React Vite)
-Open a **third terminal window** in the project root and execute:
-```bash
-# 1. Navigate to the frontend directory
-cd frontend
-
-# 2. Install package dependencies
-npm install
-
-# 3. Start the Vite development server
-npm run dev
-```
-
-**🎉 That's it!** Open **[http://localhost:5173](http://localhost:5173)** in your browser to use the application.
+### Option B: Run locally (Without Docker)
+If you don't have Docker, you must install and start these 3 services manually on your system:
+1. **PostgreSQL**: Download and start PostgreSQL on port `5432`. Ensure the database user is `postgres` with password `postgres`.
+2. **Redis**: Download and start Redis server on port `6379`.
+3. **MinIO**: Download MinIO Server and run it:
+   ```cmd
+   minio.exe server C:\minio_data --console-address :9001
+   ```
+   Ensure MinIO API is listening on port `9000`.
 
 ---
 
-## 🖥️ Scenario 2: Run ONLY the Backend (And databases)
+## 💻 Step 2: Set Up and Run the Express Backend
 
-If you are a backend engineer and only want to work on APIs, test databases, or write worker logic:
-
-### Method A: With Docker (Easiest)
-Run the following in the project root:
-```bash
-docker compose up -d postgres redis minio backend
-```
-This launches Postgres, Redis, MinIO, and the backend container. You can now test endpoints at `http://localhost:4000/docs`.
-
-### Method B: Fully Local (No Docker at all)
-If you do not want to use Docker, you must install PostgreSQL, Redis, and MinIO locally on your OS. Once they are running:
-
-1. Open a terminal in the `/backend` directory:
+1. Navigate to the `backend/` folder:
    ```bash
    cd backend
    ```
-2. Copy the configuration file:
-   ```bash
-   cp .env.example .env
-   ```
-   *(Open `.env` and verify your `DATABASE_URL`, `REDIS_URL`, and `S3_ENDPOINT` configurations match your local installations)*
-3. Install packages:
+2. Install dependencies:
    ```bash
    npm install
    ```
-4. Run migrations and database setup:
-   ```bash
-   # Generate Prisma client
-   npx prisma generate
-   # Create database tables
-   npx prisma migrate dev --name init
+3. Configure your Environment variables. Create or edit `backend/.env` file:
+   ```env
+   PORT=4000
+   DATABASE_URL=postgresql://postgres:postgres@localhost:5432/legalease?schema=public
+   REDIS_URL=redis://localhost:6379
+   S3_ENDPOINT=http://localhost:9000
+   S3_ACCESS_KEY=minioadmin
+   S3_SECRET_KEY=minioadminpassword
+   S3_BUCKET_NAME=legalease-contracts
+   JWT_ACCESS_SECRET=your_super_secret_access_key
+   JWT_REFRESH_SECRET=your_super_secret_refresh_key
+   
+   # IMPORTANT CONFIGURATION:
+   # Set to "true" to run in Mock Mode (runs without needing Docker, S3, or PostgreSQL).
+   # Set to "false" to run in real Production mode.
+   MOCK_SERVICES=true
+   
+   AI_SERVICE_URL=http://localhost:8000
    ```
-5. Start development server:
+4. Update the database schema:
+   * **If running in real mode** (with PostgreSQL active):
+     ```bash
+     npx prisma db push
+     ```
+   * **If running in mock mode** (`MOCK_SERVICES=true`): You can skip this database sync step.
+5. Start the backend development server:
    ```bash
    npm run dev
    ```
+   *The backend will now be running at [http://localhost:4000](http://localhost:4000).*
 
 ---
 
-## 🤖 Scenario 3: Run ONLY the AI/ML Microservice
+## 🎨 Step 3: Set Up and Run the React Frontend
 
-If you want to run or test only the Python classification and extraction microservice:
-
-1. Open a terminal in `/ai-service`:
-   ```bash
-   cd ai-service
-   ```
-2. Activate your virtual environment (create one first if you haven't, using instructions in Scenario 1):
-   * Windows PowerShell: `.venv\Scripts\Activate.ps1`
-   * Windows CMD: `.venv\Scripts\activate.bat`
-   * macOS/Linux: `source .venv/bin/activate`
-3. Start the server:
-   ```bash
-   uvicorn main:app --reload --port 8000
-   ```
-You can access the AI microservice documentation and test endpoints directly at **[http://localhost:8000/docs](http://localhost:8000/docs)**.
-
----
-
-## 🎨 Scenario 4: Run ONLY the Frontend
-
-If you are a frontend developer tweaking the design or routing:
-
-1. Open a terminal in `/frontend`:
+1. Open a new terminal window and navigate to the `frontend/` folder:
    ```bash
    cd frontend
    ```
-2. Install packages:
+2. Install dependencies:
    ```bash
    npm install
    ```
-3. Start the Vite server:
+3. Start the Vite development server:
    ```bash
    npm run dev
    ```
-*Note: Without a running backend, login, signup, and uploads will fail. You can enable mock responses in the backend if you are testing styling details.*
+   *The frontend website will open at [http://localhost:5173](http://localhost:5173).*
 
 ---
 
-## 🧪 Verification & Health Check Scripts
+## 🤖 Step 4: Set Up and Run the AI/ML Python Service
 
-We have provided automated scripts to ensure all configurations, connections, and ML engines are working correctly.
+*(Only required when `MOCK_SERVICES=false` in the backend environment)*
 
-### 1. Test the Node.js Backend & Queues
-From the `/backend` directory:
-```bash
-# Verify auth token generation, DB connections, and environment variables
-npx ts-node scripts/verify-week1.ts
-
-# Verify MinIO connection and BullMQ queue flow
-npx ts-node scripts/verify-week2.ts
-
-# Verify risk calculations and endpoint connections
-npx ts-node scripts/verify-week3.ts
-```
-
-### 2. Test the AI/ML Service
-Ensure your python virtual environment is active in the `/ai-service` directory, then run:
-```bash
-# Basic FastAPI microservice smoke test
-python scripts/smoke_test.py
-
-# Test PDF extraction and OpenCV/OCR pipelines
-python scripts/test_week2_pipeline.py
-
-# Test Legal-BERT clause classification & risk rules
-python scripts/test_week3_classifier.py
-```
+1. Open a new terminal window and navigate to the `ai-service/` folder:
+   ```bash
+   cd ai-service
+   ```
+2. Create and activate a Python virtual environment:
+   * **On Windows**:
+     ```bash
+     python -m venv venv
+     .\venv\Scripts\activate
+     ```
+   * **On macOS/Linux**:
+     ```bash
+     python3 -m venv venv
+     source venv/bin/activate
+     ```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Start the FastAPI server:
+   ```bash
+   uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+   ```
+   *The AI/ML Service is now running at [http://localhost:8000](http://localhost:8000).*
 
 ---
 
-## ❓ Troubleshooting Common Errors
-
-### 1. "Docker command not found" or "Cannot connect to Docker daemon"
-* Make sure **Docker Desktop** is open and fully started (check your taskbar for the green Docker whale).
-* If running on Windows WSL2, check that "WSL integration" is enabled in Docker settings.
-
-### 2. Python: "ImportError: No module named..."
-* Make sure you activated the virtual environment (`.venv`) before installing `requirements.txt` or starting `uvicorn`. Your terminal line should start with `(.venv)`.
-* If Tesseract OCR fails, you must install Tesseract on your computer:
-  * **Windows**: Download installer from GitHub (e.g. UB Mannheim) and add `C:\Program Files\Tesseract-OCR` to your System Environment variables (`PATH`).
-  * **macOS**: Run `brew install tesseract`.
-  * **Ubuntu/Linux**: Run `sudo apt-get install tesseract-ocr`.
-
-### 3. Backend: "PrismaClientInitializationError"
-* Your database is not running or the connection string is wrong.
-* If running without Docker, double-check that PostgreSQL is running on port `5432` and that the password matches the `DATABASE_URL` in your backend `/backend/.env` file.
