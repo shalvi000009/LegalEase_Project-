@@ -52,6 +52,10 @@ export async function loginUser(credentials: LoginCredentials): Promise<AuthResp
     // TODO: Replace with real API call to POST /auth/login when Shalvi's endpoint is live
     return await apiPost<AuthResponse>('/auth/login', credentials);
   } catch (err: unknown) {
+    // If the server responded with an error (e.g. 401 Unauthorized), do not fall back to the mock user.
+    if (err && typeof err === 'object' && 'response' in err && (err as any).response) {
+      throw err;
+    }
     const errorObj = err as { message?: string };
     console.warn('[AUTH API] Backend endpoint /auth/login unreachable, falling back to stubbed response for testing:', errorObj.message);
     
@@ -85,6 +89,10 @@ export async function registerUser(data: RegisterData): Promise<AuthResponse> {
       password: data.password,
     });
   } catch (err: unknown) {
+    // If the server responded with an error (e.g. 409 Conflict), do not fall back to the mock user.
+    if (err && typeof err === 'object' && 'response' in err && (err as any).response) {
+      throw err;
+    }
     const errorObj = err as { message?: string };
     console.warn('[AUTH API] Backend endpoint /auth/register unreachable, falling back to stubbed response for testing:', errorObj.message);
     

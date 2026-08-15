@@ -22,8 +22,10 @@ export async function uploadDocument(
     });
 
     const data = res.data;
-    // Backend openapi response format: { message, document: { id, filename, status, ... } }
-    const docId = data.document?.id || data.docId || `mock-doc-${Date.now()}`;
+    console.log('[UPLOAD API RESPONSE]:', data);
+
+    // Support backend openapi & custom payload formats (data.document?.id, data.documentId, data.id, data.docId)
+    const docId = data.documentId || data.document?.id || data.id || data.docId || `mock-doc-${Date.now()}`;
     return {
       message: data.message || 'Upload successful',
       docId,

@@ -231,4 +231,50 @@ router.get("/", requireAuth, DocumentController.listDocuments);
  */
 router.get("/:id", requireAuth, DocumentController.getDocumentStatus);
 
+/**
+ * @openapi
+ * /api/v1/documents/{id}/share:
+ *   post:
+ *     summary: Generate a shareable link for a document
+ *     description: Sets the document as shared, generates a unique share token, and returns a shareable URL.
+ *     tags:
+ *       - Documents
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The unique ID of the document to share
+ *     responses:
+ *       200:
+ *         description: Shareable link generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 shareableLink:
+ *                   type: string
+ *                   example: "http://localhost:5173/shared/f47ac10b-58cc-4372-a567-0e02b2c3d479"
+ *       401:
+ *         description: Authentication failed
+ *       404:
+ *         description: Document not found or user lacks permission
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error_code: "NOT_FOUND"
+ *               message: "Document not found or access denied"
+ */
+router.post("/:id/share", requireAuth, DocumentController.shareDocument);
+
 export default router;

@@ -6,13 +6,19 @@ import {
   FileText,
   Shield,
   Settings,
-  Sparkles,
   X,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../hooks/useAuth';
 
-const navItems = [
+interface NavItem {
+  icon: React.ElementType;
+  label: string;
+  href: string;
+  badge?: string;
+}
+
+const navItems: NavItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
   { icon: UploadCloud, label: 'Upload Contract', href: '/upload' },
   { icon: FileText, label: 'My Documents', href: '/documents' },

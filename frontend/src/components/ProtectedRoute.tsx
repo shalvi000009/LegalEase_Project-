@@ -8,15 +8,15 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isHydrated } = useAuthStore();
+  const { isAuthenticated, isHydrated, isLoading } = useAuthStore();
   const location = useLocation();
 
-  if (!isHydrated) {
+  if (!isHydrated || isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 gap-4">
         <Spinner size="lg" variant="primary" />
         <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 animate-pulse">
-          Hydrating LegalEase Auth Session...
+          Loading LegalEase Session...
         </p>
       </div>
     );

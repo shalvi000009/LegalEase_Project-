@@ -47,6 +47,16 @@ apiClient.interceptors.response.use(
   async (error: AxiosError<{ message?: string }>) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
+    // Antigravity prevention: immediately reject all errors with status >= 400 for auth routes
+    if (error.response && error.response.status >= 400) {
+      const isAuthRoute = originalRequest.url?.includes('/auth/login') || originalRequest.url?.includes('/auth/register');
+      if (isAuthRoute || error.response.status !== 401) {
+        const errorMessage = error.response?.data?.message || error.message || 'An unexpected error occurred';
+        toast.error(errorMessage);
+        return Promise.reject(error);
+      }
+    }
+
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
@@ -68,7 +78,6 @@ apiClient.interceptors.response.use(
       const refreshToken = useAuthStore.getState().refreshToken;
 
       if (!refreshToken) {
-        useAuthStore.getState().logout();
         isRefreshing = false;
         return Promise.reject(error);
       }
@@ -89,8 +98,6 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshErr) {
         processQueue(refreshErr, null);
-        useAuthStore.getState().logout();
-        toast.error('Session expired. Please log in again.');
         return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;

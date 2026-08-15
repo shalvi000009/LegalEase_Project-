@@ -140,4 +140,46 @@ export class DocumentController {
       next(error);
     }
   }
+
+  public static async shareDocument(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const reqAuth = req as AuthenticatedRequest;
+      if (!reqAuth.user) {
+        throw new BadRequestError("User context is missing");
+      }
+
+      const { id } = req.params;
+
+      const document = await prisma.document.findFirst({
+        where: {
+          id,
+          user_id: reqAuth.user.id,
+        },
+      });
+
+      if (!document) {
+        throw new NotFoundError("Document not found or access denied");
+      }
+
+      const token = crypto.randomUUID();
+
+      await prisma.document.update({
+        where: { id },
+        data: {
+          isShared: true,
+          shareToken: token,
+          sharedAt: new Date(),
+        },
+      });
+
+      const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+
+      res.status(200).json({
+        success: true,
+        shareableLink: `${FRONTEND_URL}/shared/${token}`,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

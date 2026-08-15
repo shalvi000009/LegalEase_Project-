@@ -110,7 +110,7 @@ export const startAnalysisWorker = (): Worker => {
         await prisma.document.update({
           where: { id: documentId },
           data: { status: "failed" },
-        }).catch((dbErr) => {
+        }).catch((dbErr: any) => {
           console.error(`[Worker] Failed to mark document ${documentId} as failed:`, dbErr);
         });
         throw error;

@@ -51,8 +51,7 @@ export const LoginPage: React.FC = () => {
         onSubmit={handleSubmit(onSubmit)}
         className="space-y-5"
         initial="hidden"
-        animate={serverError ? { x: [-10, 10, -8, 8, -4, 4, 0] } : 'visible'}
-        transition={{ duration: 0.4 }}
+        animate="visible"
         variants={{
           hidden: { opacity: 0 },
           visible: {
@@ -64,10 +63,11 @@ export const LoginPage: React.FC = () => {
         {serverError && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
+            animate={{ opacity: 1, scale: 1, x: [-8, 8, -6, 6, -3, 3, 0] }}
+            transition={{ duration: 0.4 }}
             className="p-3.5 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-2"
           >
-            <span>⚠️</span>
+            <span className="text-base">⚠️</span>
             <span>{serverError}</span>
           </motion.div>
         )}

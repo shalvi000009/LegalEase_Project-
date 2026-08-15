@@ -46,6 +46,9 @@ model Document {
   s3_key     String         @map("s3_key")
   status     DocumentStatus @default(uploaded)
   created_at DateTime       @default(now()) @map("created_at")
+  isShared   Boolean        @default(false) @map("is_shared")
+  shareToken String?        @unique @map("share_token")
+  sharedAt   DateTime?      @map("shared_at")
 
   user       User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
   analyses   Analysis[]

@@ -86,6 +86,14 @@ function AnimatedRoutes() {
             }
           />
           <Route
+            path="/contracts"
+            element={
+              <ProtectedRoute>
+                <DocumentsListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/documents/:id"
             element={
               <ProtectedRoute>
@@ -94,7 +102,23 @@ function AnimatedRoutes() {
             }
           />
           <Route
+            path="/contracts/:id"
+            element={
+              <ProtectedRoute>
+                <DocumentDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/documents/:id/processing"
+            element={
+              <ProtectedRoute>
+                <ProcessingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/contracts/:id/processing"
             element={
               <ProtectedRoute>
                 <ProcessingPage />
@@ -111,6 +135,14 @@ function AnimatedRoutes() {
           />
           <Route
             path="/documents/:id/results"
+            element={
+              <ProtectedRoute>
+                <ResultsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/contracts/:id/results"
             element={
               <ProtectedRoute>
                 <ResultsPage />

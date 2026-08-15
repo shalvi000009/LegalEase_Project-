@@ -1,11 +1,10 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { UploadCloud, FileCheck, ShieldAlert, Sparkles, Clock, ArrowRight } from 'lucide-react';
+import { UploadCloud, FileCheck, ShieldAlert, Clock, ArrowRight } from 'lucide-react';
 import { MainLayout } from '../components/layout/MainLayout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge';
 import { useAuth } from '../hooks/useAuth';
 
 export const DashboardPage: React.FC = () => {

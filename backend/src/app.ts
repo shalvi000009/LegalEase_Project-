@@ -12,9 +12,14 @@ dotenv.config();
 
 const app = express();
 
-// CORS configuration scoped to configured origin (defaulting to Vite dev port 5173)
-const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
-app.use(cors({ origin: corsOrigin }));
+// CORS configuration scoped to configured origin (defaulting to Vite ports 3000 and 5173)
+const allowedOrigins = [
+  process.env.CORS_ORIGIN,
+  "http://localhost:3000",
+  "http://localhost:5173",
+].filter(Boolean) as string[];
+
+app.use(cors({ origin: allowedOrigins }));
 
 app.use(express.json());
 

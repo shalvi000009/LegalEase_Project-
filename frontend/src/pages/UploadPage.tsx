@@ -4,7 +4,6 @@ import toast from 'react-hot-toast';
 import { ArrowLeft, Sparkles, ShieldCheck, Zap } from 'lucide-react';
 import { MainLayout } from '../components/layout/MainLayout';
 import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge';
 import { FileDropzone } from '../components/upload/FileDropzone';
 import { FilePreview } from '../components/upload/FilePreview';
 import { UploadProgress } from '../components/upload/UploadProgress';
@@ -99,13 +98,17 @@ export const UploadPage: React.FC = () => {
   // Auto-redirect to Processing page or Results page
   useEffect(() => {
     if (status === 'processing' && docId) {
+      const targetPath = `/documents/${docId}/processing`;
+      console.log('[UPLOAD REDIRECT]: Navigating to:', targetPath);
       const redirectTimer = setTimeout(() => {
-        navigate(`/documents/${docId}/processing`);
+        navigate(targetPath);
       }, 800);
       return () => clearTimeout(redirectTimer);
     } else if ((polledStatus === 'completed' || status === 'completed') && docId) {
+      const targetPath = `/documents/${docId}/results`;
+      console.log('[UPLOAD REDIRECT]: Navigating to:', targetPath);
       const redirectTimer = setTimeout(() => {
-        navigate(`/documents/${docId}/results`);
+        navigate(targetPath);
       }, 1000);
       return () => clearTimeout(redirectTimer);
     }
