@@ -7,6 +7,8 @@ import documentRoutes from "./routes/document.routes";
 import analysisRoutes from "./routes/analysis.routes";
 import chatRoutes from "./routes/chat.routes";
 import shareRoutes from "./routes/share.routes";
+import dateRoutes from "./routes/date.routes";
+import reminderRoutes from "./routes/reminder.routes";
 import { swaggerSpec } from "./config/swagger";
 import { errorHandler } from "./middleware/errorHandler";
 
@@ -61,6 +63,8 @@ app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/documents", documentRoutes);
 app.use("/api/v1/documents", analysisRoutes);
+app.use("/api/v1/documents", dateRoutes);
+app.use("/api/v1/reminders", reminderRoutes);
 app.use("/api/v1/chat", chatRoutes);
 app.use("/api/v1/share", shareRoutes);
 

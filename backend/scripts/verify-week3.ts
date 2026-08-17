@@ -1,3 +1,4 @@
+process.env.MOCK_SERVICES = "true";
 import app from "../src/app";
 import { swaggerSpec } from "../src/config/swagger";
 import { prisma } from "../src/config/db";
