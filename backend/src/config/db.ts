@@ -13,6 +13,7 @@ class MockPrisma {
   private messages: any[] = [];
   private contractDates: any[] = [];
   private reminders: any[] = [];
+  private notificationPreferencesList: any[] = [];
 
   public user = {
     findUnique: async ({ where }: any) => {
@@ -302,6 +303,37 @@ class MockPrisma {
         return copy;
       }
       throw new Error("Reminder not found");
+    }
+  };
+
+  public notificationPreferences = {
+    create: async ({ data }: any) => {
+      const np = {
+        id: data.id || "mock-np-uuid-" + Date.now(),
+        user_id: data.user_id,
+        email_enabled: data.email_enabled ?? true,
+        push_enabled: data.push_enabled ?? true,
+        sms_enabled: data.sms_enabled ?? false,
+        phone_number: data.phone_number || null,
+        fcm_token: data.fcm_token || null,
+        reminder_days: data.reminder_days || [30, 7, 1],
+        rescan_notify: data.rescan_notify ?? true,
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+      this.notificationPreferencesList.push(np);
+      return np;
+    },
+    findFirst: async ({ where }: any) => {
+      return this.notificationPreferencesList.find(p => p.user_id === where.user_id || p.id === where.id) || null;
+    },
+    update: async ({ where, data }: any) => {
+      const p = this.notificationPreferencesList.find(item => item.id === where.id || item.user_id === where.user_id);
+      if (p) {
+        Object.assign(p, data, { updated_at: new Date() });
+        return p;
+      }
+      throw new Error("NotificationPreferences not found");
     }
   };
 

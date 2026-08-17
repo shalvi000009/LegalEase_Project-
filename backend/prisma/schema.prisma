@@ -16,6 +16,7 @@ model User {
   refresh_tokens RefreshToken[]
   documents     Document[]
   reminders     Reminder[]
+  notification_preference NotificationPreferences?
 
   @@map("users")
 }
@@ -187,4 +188,22 @@ model Reminder {
   contract_date ContractDate @relation(fields: [contract_date_id], references: [id], onDelete: Cascade)
 
   @@map("reminders")
+}
+
+model NotificationPreferences {
+  id             String   @id @default(uuid()) @db.Uuid
+  user_id        String   @unique @map("user_id") @db.Uuid
+  email_enabled  Boolean  @default(true) @map("email_enabled")
+  push_enabled   Boolean  @default(true) @map("push_enabled")
+  sms_enabled    Boolean  @default(false) @map("sms_enabled")
+  phone_number   String?  @map("phone_number")
+  fcm_token      String?  @map("fcm_token")
+  reminder_days  Int[]    @default([30, 7, 1]) @map("reminder_days")
+  rescan_notify  Boolean  @default(true) @map("rescan_notify")
+  created_at     DateTime @default(now()) @map("created_at")
+  updated_at     DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
 }

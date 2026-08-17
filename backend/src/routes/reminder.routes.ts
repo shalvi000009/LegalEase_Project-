@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from "express";
 import { prisma } from "../config/db";
 import { requireAuth, AuthenticatedRequest } from "../middleware/auth";
 import { NotFoundError, BadRequestError } from "../utils/errors";
+import { generateICalFeed } from "../services/ical.service";
 
 const router = Router();
 
@@ -62,6 +63,60 @@ const router = Router();
  *           example: "2026-12-10T08:00:00.000Z"
  *           description: Explicit ISO date-time to reschedule the reminder
  */
+
+/**
+ * @openapi
+ * /api/v1/reminders/calendar.ics:
+ *   get:
+ *     summary: Export user's contract deadlines as RFC 5545 .ics iCalendar feed
+ *     tags:
+ *       - Dates & Reminders
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: iCalendar (.ics) feed file
+ *         content:
+ *           text/calendar:
+ *             schema:
+ *               type: string
+ *       401:
+ *         $ref: '#/components/responses/Error401'
+ */
+router.get("/calendar.ics", requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const reqAuth = req as AuthenticatedRequest;
+    if (!reqAuth.user) {
+      throw new BadRequestError("User context missing");
+    }
+
+    const userId = reqAuth.user.id;
+
+    const reminders = await prisma.reminder.findMany({
+      where: {
+        user_id: userId,
+      },
+      include: {
+        contract_date: {
+          include: {
+            document: true,
+          },
+        },
+      },
+      orderBy: {
+        scheduled_for: "asc",
+      },
+    });
+
+    const icsContent = generateICalFeed(reminders);
+
+    res.setHeader("Content-Type", "text/calendar; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="legalease_deadlines.ics"');
+    res.status(200).send(icsContent);
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * @openapi

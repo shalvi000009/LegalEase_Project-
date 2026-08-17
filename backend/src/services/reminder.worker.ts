@@ -2,12 +2,15 @@ import { Worker, Queue, Job } from "bullmq";
 import { connectionOptions } from "../config/queue";
 import { prisma } from "../config/db";
 import { sendReminderEmail } from "./email.service";
+import { sendPushNotification } from "./fcm.service";
+import { sendSmsNotification } from "./twilio.service";
 
 export const REMINDER_QUEUE_NAME = "reminder-notifications";
 const isMock = process.env.MOCK_SERVICES === "true";
 
 /**
  * Process pending reminders due for delivery today or earlier.
+ * Branches multi-channel delivery by email (SendGrid), push (FCM), or SMS (Twilio).
  */
 export async function processPendingReminders(): Promise<{ processedCount: number; successCount: number; failureCount: number }> {
   const now = new Date();
@@ -49,15 +52,40 @@ export async function processPendingReminders(): Promise<{ processedCount: numbe
         continue;
       }
 
-      // Dispatch email notification via SendGrid service
-      await sendReminderEmail({
-        to: user.email,
-        userName: user.name,
-        documentTitle: document.filename,
-        dateType: contractDate.date_type,
-        resolvedDate: contractDate.resolved_date,
-        daysBefore: reminder.days_before,
+      // Fetch user's notification preferences (if available)
+      const userPrefs = await prisma.notificationPreferences.findFirst({
+        where: { user_id: user.id },
       });
+
+      const readableDateType = contractDate.date_type.replace(/_/g, " ").toUpperCase();
+
+      // Branch execution by channel
+      if (reminder.channel === "push" || (userPrefs && userPrefs.push_enabled && !userPrefs.email_enabled)) {
+        const token = userPrefs?.fcm_token || `fcm-token-user-${user.id}`;
+        await sendPushNotification({
+          token,
+          title: `[LegalEase Alert] ${readableDateType} Deadline`,
+          body: `Contract "${document.filename}" deadline in ${reminder.days_before} day(s).`,
+          docId: document.id,
+        });
+      } else if (reminder.channel === "sms" || reminder.days_before === 1) {
+        // SMS used for 1-day critical deadline alerts or explicit SMS channel
+        const phone = userPrefs?.phone_number || "+15005550006";
+        await sendSmsNotification({
+          to: phone,
+          message: `[LegalEase Critical Alert] ${readableDateType} for ${document.filename} is due in ${reminder.days_before} day(s)!`,
+        });
+      } else {
+        // Default channel: email via SendGrid
+        await sendReminderEmail({
+          to: user.email,
+          userName: user.name,
+          documentTitle: document.filename,
+          dateType: contractDate.date_type,
+          resolvedDate: contractDate.resolved_date,
+          daysBefore: reminder.days_before,
+        });
+      }
 
       // Update reminder status on success
       await prisma.reminder.update({
@@ -87,11 +115,11 @@ export async function processPendingReminders(): Promise<{ processedCount: numbe
 }
 
 /**
- * Initialize BullMQ Queue and Worker for daily cron reminder job.
+ * Initialize BullMQ Queue and Worker for multi-channel daily cron reminder job.
  */
 export function startReminderWorker(): Worker | null {
   if (isMock) {
-    console.log("👷 [Mock Worker] Mock reminder worker initialized inline.");
+    console.log("👷 [Mock Worker] Mock multi-channel reminder worker initialized inline.");
     return null;
   }
 
@@ -113,7 +141,7 @@ export function startReminderWorker(): Worker | null {
     const reminderWorker = new Worker(
       REMINDER_QUEUE_NAME,
       async (job: Job) => {
-        console.log(`[REMINDER WORKER] Processing reminder job '${job.name}' (ID: ${job.id})...`);
+        console.log(`[REMINDER WORKER] Processing multi-channel reminder job '${job.name}' (ID: ${job.id})...`);
         const result = await processPendingReminders();
         console.log(`[REMINDER WORKER] Completed. Processed: ${result.processedCount}, Sent: ${result.successCount}, Failed: ${result.failureCount}`);
         return result;
