@@ -49,6 +49,11 @@ app.include_router(classify_router)
 app.include_router(classify_api_v1_router)
 logger.info("Registered routers: /internal/classify and /api/v1/analyze")
 
+# Week 6: Date extraction and resolution router
+from routers.internal_dates import router as dates_router  # noqa: E402
+app.include_router(dates_router)
+logger.info("Registered router: /internal/extract-dates")
+
 
 # ---------------------------------------------------------------------------
 # Week 1: Health check

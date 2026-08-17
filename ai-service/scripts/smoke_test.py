@@ -7,7 +7,7 @@ from openai import OpenAI
 # pyrefly: ignore [missing-import]
 from anthropic import Anthropic
 
-# Load environment variables
+
 load_dotenv()
 
 def test_openai():
