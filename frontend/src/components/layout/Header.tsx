@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { LogOut, Bell, ChevronDown, ChevronRight, Settings, Menu } from 'lucide-react';
+import { LogOut, Bell, ChevronDown, ChevronRight, Settings, Menu, MessageSquare } from 'lucide-react';
 import { Logo } from '../ui/Logo';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { useAuth } from '../../hooks/useAuth';
+import { useChatStore } from '../../store/chatStore';
 
 interface HeaderProps {
   onToggleMobileMenu?: () => void;
@@ -13,6 +14,9 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const location = useLocation();
+  const toggleChatOpen = useChatStore((state) => state.toggleChatOpen);
+
+  const isResultsPage = location.pathname.includes('/results');
 
   // Generate breadcrumb items based on current pathname
   const getBreadcrumbs = () => {
@@ -72,7 +76,19 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         </nav>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Chat Drawer Toggle (Results Page) */}
+        {isResultsPage && (
+          <button
+            onClick={toggleChatOpen}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors text-xs font-semibold shadow-xs"
+            aria-label="Open AI Contract Chat"
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span className="hidden sm:inline">Ask AI</span>
+          </button>
+        )}
+
         {/* Notification Bell */}
         <button
           className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative"

@@ -11,10 +11,11 @@ import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { UploadPage } from './pages/UploadPage';
-import { DocumentsListPage } from './pages/DocumentsListPage';
+import { DocumentsPage } from './pages/DocumentsPage';
 import { DocumentDetailPage } from './pages/DocumentDetailPage';
 import { ProcessingPage } from './pages/ProcessingPage';
 import { ResultsPage } from './pages/ResultsPage';
+import { SharedViewPage } from './pages/SharedViewPage';
 import { VaultPage } from './pages/VaultPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -59,6 +60,7 @@ function AnimatedRoutes() {
               </PublicOnlyRoute>
             }
           />
+          <Route path="/shared/:token" element={<SharedViewPage />} />
 
           {/* Protected Routes */}
           <Route
@@ -81,7 +83,7 @@ function AnimatedRoutes() {
             path="/documents"
             element={
               <ProtectedRoute>
-                <DocumentsListPage />
+                <DocumentsPage />
               </ProtectedRoute>
             }
           />
@@ -111,6 +113,14 @@ function AnimatedRoutes() {
           />
           <Route
             path="/documents/:id/results"
+            element={
+              <ProtectedRoute>
+                <ResultsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/documents/:id/chat"
             element={
               <ProtectedRoute>
                 <ResultsPage />

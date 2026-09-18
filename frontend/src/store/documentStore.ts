@@ -10,9 +10,20 @@ export interface CurrentUploadState {
   error: string | null;
 }
 
+export type DocumentFilterStatus = 'all' | 'processing' | 'completed' | 'failed';
+export type DocumentSortOption = 'newest' | 'oldest' | 'risk_high' | 'name';
+
 interface DocumentStore {
   currentUpload: CurrentUploadState | null;
   recentDocuments: Document[];
+  documents: Document[];
+  searchQuery: string;
+  filterStatus: DocumentFilterStatus;
+  sortBy: DocumentSortOption;
+  currentPage: number;
+  pageSize: number;
+  totalPages: number;
+  totalCount: number;
   
   // Actions
   setCurrentUpload: (upload: CurrentUploadState | null) => void;
@@ -21,6 +32,13 @@ interface DocumentStore {
   setUploadDocId: (docId: string) => void;
   addRecentDocument: (doc: Document) => void;
   clearCurrentUpload: () => void;
+
+  setDocuments: (docs: Document[]) => void;
+  removeDocument: (docId: string) => void;
+  setSearchQuery: (query: string) => void;
+  setFilterStatus: (status: DocumentFilterStatus) => void;
+  setSortBy: (sort: DocumentSortOption) => void;
+  setPagination: (page: number, totalPages: number, totalCount: number) => void;
 }
 
 export const useDocumentStore = create<DocumentStore>()(
@@ -28,6 +46,14 @@ export const useDocumentStore = create<DocumentStore>()(
     (set) => ({
       currentUpload: null,
       recentDocuments: [],
+      documents: [],
+      searchQuery: '',
+      filterStatus: 'all',
+      sortBy: 'newest',
+      currentPage: 1,
+      pageSize: 9,
+      totalPages: 1,
+      totalCount: 0,
 
       setCurrentUpload: (upload) => set({ currentUpload: upload }),
 
@@ -60,6 +86,19 @@ export const useDocumentStore = create<DocumentStore>()(
         }),
 
       clearCurrentUpload: () => set({ currentUpload: null }),
+
+      setDocuments: (documents) => set({ documents }),
+      removeDocument: (docId) =>
+        set((state) => ({
+          documents: state.documents.filter((d) => d.id !== docId),
+          recentDocuments: state.recentDocuments.filter((d) => d.id !== docId),
+          totalCount: Math.max(0, state.totalCount - 1),
+        })),
+      setSearchQuery: (searchQuery) => set({ searchQuery, currentPage: 1 }),
+      setFilterStatus: (filterStatus) => set({ filterStatus, currentPage: 1 }),
+      setSortBy: (sortBy) => set({ sortBy }),
+      setPagination: (currentPage, totalPages, totalCount) =>
+        set({ currentPage, totalPages, totalCount }),
     }),
     {
       name: 'legalease_recent_documents',

@@ -1,7 +1,7 @@
 import React, { useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, RefreshCw, AlertCircle, Sparkles } from 'lucide-react';
+import { ArrowLeft, RefreshCw, AlertCircle, Sparkles, Share2 } from 'lucide-react';
 import { MainLayout } from '../components/layout/MainLayout';
 import { Button } from '../components/ui/Button';
 import { useDocumentAnalysis } from '../hooks/useDocumentAnalysis';
@@ -15,6 +15,13 @@ import { usePDFSync } from '../hooks/usePDFSync';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { Clause } from '../types/analysis';
 
+// Week 5 Integrations
+import { ChatSidebar } from '../components/chat/ChatSidebar';
+import { ShareModal } from '../components/share/ShareModal';
+import { ReportDownloadButton } from '../components/report/ReportDownloadButton';
+import { useChatStore } from '../store/chatStore';
+import { useShareLink } from '../hooks/useShareLink';
+
 export const ResultsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -27,6 +34,15 @@ export const ResultsPage: React.FC = () => {
   // Zustand PDF Store & Sync Hook
   const { activePanel, setActivePanel, selectedClauseId, selectClause } = usePDFStore();
   const { navigateToClause } = usePDFSync();
+
+  // Chat Store & Share Link Hooks
+  const { isChatOpen, setIsChatOpen, toggleChatOpen, setCurrentDocId } = useChatStore();
+  const { shareLink, isModalOpen, setIsModalOpen, generateShareLink, isGenerating: isGeneratingShare } = useShareLink();
+
+  // Set current active doc ID for chat session
+  useEffect(() => {
+    setCurrentDocId(docId);
+  }, [docId, setCurrentDocId]);
 
   // Sync URL query params `?panel=split|pdf|analysis`
   useEffect(() => {
@@ -63,13 +79,21 @@ export const ResultsPage: React.FC = () => {
 
   // Handler when "Ask AI about this clause" is clicked
   const handleAskAIAboutClause = useCallback(
-    (clause: Clause) => {
-      const promptText = `Explain the risks of the ${clause.clause_type} clause on page ${
-        clause.page_number || 1
-      }: "${clause.original_text || clause.explanation}"`;
-      navigate(`/documents/${docId}/chat?prompt=${encodeURIComponent(promptText)}`);
+    (_clause: Clause) => {
+      setIsChatOpen(true);
     },
-    [navigate, docId]
+    [setIsChatOpen]
+  );
+
+  // Handler for citation click in chat
+  const handleCitationClick = useCallback(
+    (clauseId: string, _page?: number) => {
+      selectClause(clauseId);
+      if (!isDesktop) {
+        handlePanelTabChange('pdf');
+      }
+    },
+    [isDesktop, selectClause]
   );
 
   if (isLoading) {
@@ -126,7 +150,7 @@ export const ResultsPage: React.FC = () => {
     <MainLayout>
       <div className="max-w-full mx-auto space-y-4 pb-16 px-2 sm:px-4">
         {/* Page Top Navigation & Tab Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 px-5 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 px-5 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -135,10 +159,10 @@ export const ResultsPage: React.FC = () => {
               iconLeft={<ArrowLeft className="w-4 h-4" />}
               className="text-xs"
             >
-              Documents
+              My Documents
             </Button>
             <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
-            <h1 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate">
+            <h1 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate max-w-xs sm:max-w-md">
               {analysis.filename || 'Contract_Analysis.pdf'}
             </h1>
           </div>
@@ -150,14 +174,34 @@ export const ResultsPage: React.FC = () => {
             isDesktop={isDesktop}
           />
 
-          <Button
-            size="sm"
-            onClick={() => navigate(`/documents/${docId}/chat`)}
-            iconLeft={<Sparkles className="w-3.5 h-3.5" />}
-            className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
-          >
-            Ask AI Assistant
-          </Button>
+          {/* Header Action Buttons (Share, Download Report, AI Chat) */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => generateShareLink(docId)}
+              iconLeft={<Share2 className="w-3.5 h-3.5" />}
+              className="text-xs"
+            >
+              Share
+            </Button>
+
+            <ReportDownloadButton
+              docId={docId}
+              filename={analysis.filename}
+              variant="outline"
+              size="sm"
+            />
+
+            <Button
+              size="sm"
+              onClick={toggleChatOpen}
+              iconLeft={<Sparkles className="w-3.5 h-3.5 text-amber-300" />}
+              className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
+            >
+              Ask AI Assistant
+            </Button>
+          </div>
         </div>
 
         {/* Side-by-Side Resizable Panels Container */}
@@ -188,7 +232,23 @@ export const ResultsPage: React.FC = () => {
         </motion.div>
 
         {/* Sticky Action Footer */}
-        <ResultsActions onAskAI={() => navigate(`/documents/${docId}/chat`)} />
+        <ResultsActions onAskAI={toggleChatOpen} />
+
+        {/* Week 5 RAG Chat Sidebar Panel */}
+        <ChatSidebar
+          docId={docId}
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+          onCitationClick={handleCitationClick}
+        />
+
+        {/* Shareable Link Modal */}
+        <ShareModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          shareLink={shareLink}
+          isLoading={isGeneratingShare}
+        />
       </div>
     </MainLayout>
   );
