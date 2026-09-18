@@ -10,19 +10,26 @@ import {
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../hooks/useAuth';
+import { useVaultStore } from '../../store/vaultStore';
 
 interface NavItem {
   icon: React.ElementType;
   label: string;
   href: string;
   badge?: string;
+  getBadge?: (expiringCount: number) => string | undefined;
 }
 
 const navItems: NavItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
   { icon: UploadCloud, label: 'Upload Contract', href: '/upload' },
   { icon: FileText, label: 'My Documents', href: '/documents' },
-  { icon: Shield, label: 'Contract Vault', href: '/vault' },
+  { 
+    icon: Shield, 
+    label: 'Contract Vault', 
+    href: '/vault',
+    getBadge: (count: number) => count > 0 ? `${count} expiring` : undefined
+  },
   { icon: Settings, label: 'Settings', href: '/settings' },
 ];
 
@@ -33,6 +40,8 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onCloseMobile }) => {
   const { user } = useAuth();
+  const contracts = useVaultStore((state) => state.contracts);
+  const expiringCount = contracts.filter((c) => c.status === 'expiring_soon' || (c.daysRemaining > 0 && c.daysRemaining <= 30)).length;
 
   const sidebarContent = (
     <div className="h-full flex flex-col justify-between p-4">
@@ -54,6 +63,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onCloseMob
 
         {navItems.map((item) => {
           const Icon = item.icon;
+          const badgeText = item.getBadge ? item.getBadge(expiringCount) : item.badge;
+
           return (
             <NavLink
               key={item.label}
@@ -72,9 +83,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onCloseMob
                 <Icon className="w-4 h-4" />
                 <span>{item.label}</span>
               </div>
-              {item.badge && (
-                <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full font-bold">
-                  {item.badge}
+              {badgeText && (
+                <span className="text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">
+                  {badgeText}
                 </span>
               )}
             </NavLink>
@@ -123,3 +134,4 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onCloseMob
     </>
   );
 };
+

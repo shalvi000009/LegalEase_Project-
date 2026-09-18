@@ -136,6 +136,14 @@ function AnimatedRoutes() {
             }
           />
           <Route
+            path="/vault/calendar"
+            element={
+              <ProtectedRoute>
+                <VaultPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/settings"
             element={
               <ProtectedRoute>
