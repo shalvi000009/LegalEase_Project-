@@ -5,10 +5,14 @@ import { Spinner } from './ui/Spinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  requireAdmin?: boolean;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isHydrated } = useAuthStore();
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  children,
+  requireAdmin = false,
+}) => {
+  const { user, isAuthenticated, isHydrated } = useAuthStore();
   const location = useLocation();
 
   if (!isHydrated) {
@@ -26,6 +30,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Admin Role Check (allowed if user.role === 'admin' OR in dev preview mode)
+  if (requireAdmin && user?.role && user.role !== 'admin' && process.env.NODE_ENV === 'production') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return <>{children}</>;
 };
 
@@ -35,7 +44,7 @@ interface LocationState {
   };
 }
 
-export const PublicOnlyRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+export const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isHydrated } = useAuthStore();
   const location = useLocation();
 

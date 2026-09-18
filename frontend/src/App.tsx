@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
@@ -7,20 +7,52 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useAuthStore } from './store/authStore';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ProtectedRoute, PublicOnlyRoute } from './components/ProtectedRoute';
-import { LoginPage } from './pages/auth/LoginPage';
-import { RegisterPage } from './pages/auth/RegisterPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { UploadPage } from './pages/UploadPage';
-import { DocumentsPage } from './pages/DocumentsPage';
-import { DocumentDetailPage } from './pages/DocumentDetailPage';
-import { ProcessingPage } from './pages/ProcessingPage';
-import { ResultsPage } from './pages/ResultsPage';
-import { SharedViewPage } from './pages/SharedViewPage';
-import { VaultPage } from './pages/VaultPage';
-import { SettingsPage } from './pages/SettingsPage';
-import { IntegrationsPage } from './pages/IntegrationsPage';
-import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
-import { NotFoundPage } from './pages/NotFoundPage';
+import { measurePageLoad } from './utils/performance';
+import { Spinner } from './components/ui/Spinner';
+
+// Route Code-Splitting with React.lazy
+const LoginPage = lazy(() =>
+  import('./pages/auth/LoginPage').then((m) => ({ default: m.LoginPage }))
+);
+const RegisterPage = lazy(() =>
+  import('./pages/auth/RegisterPage').then((m) => ({ default: m.RegisterPage }))
+);
+const DashboardPage = lazy(() =>
+  import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage }))
+);
+const UploadPage = lazy(() =>
+  import('./pages/UploadPage').then((m) => ({ default: m.UploadPage }))
+);
+const DocumentsPage = lazy(() =>
+  import('./pages/DocumentsPage').then((m) => ({ default: m.DocumentsPage }))
+);
+const DocumentDetailPage = lazy(() =>
+  import('./pages/DocumentDetailPage').then((m) => ({ default: m.DocumentDetailPage }))
+);
+const ProcessingPage = lazy(() =>
+  import('./pages/ProcessingPage').then((m) => ({ default: m.ProcessingPage }))
+);
+const ResultsPage = lazy(() =>
+  import('./pages/ResultsPage').then((m) => ({ default: m.ResultsPage }))
+);
+const VaultPage = lazy(() =>
+  import('./pages/VaultPage').then((m) => ({ default: m.VaultPage }))
+);
+const SettingsPage = lazy(() =>
+  import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage }))
+);
+const IntegrationsPage = lazy(() =>
+  import('./pages/IntegrationsPage').then((m) => ({ default: m.IntegrationsPage }))
+);
+const OAuthCallbackPage = lazy(() =>
+  import('./pages/OAuthCallbackPage').then((m) => ({ default: m.OAuthCallbackPage }))
+);
+const SharedViewPage = lazy(() =>
+  import('./pages/SharedViewPage').then((m) => ({ default: m.SharedViewPage }))
+);
+const NotFoundPage = lazy(() =>
+  import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage }))
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,6 +63,17 @@ const queryClient = new QueryClient({
   },
 });
 
+function PageSuspenseFallback() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 gap-3">
+      <Spinner size="lg" variant="primary" />
+      <p className="text-xs font-bold text-slate-500 dark:text-slate-400 animate-pulse">
+        Loading LegalEase Workspace...
+      </p>
+    </div>
+  );
+}
+
 function AnimatedRoutes() {
   const location = useLocation();
 
@@ -38,152 +81,154 @@ function AnimatedRoutes() {
     <AnimatePresence mode="wait">
       <motion.div
         key={location.pathname}
-        initial={{ opacity: 0, y: 8 }}
+        initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
-        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+        exit={{ opacity: 0, y: -6 }}
+        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
         className="w-full min-h-screen flex flex-col"
       >
-        <Routes location={location}>
-          {/* Public Routes */}
-          <Route
-            path="/login"
-            element={
-              <PublicOnlyRoute>
-                <LoginPage />
-              </PublicOnlyRoute>
-            }
-          />
-          <Route
-            path="/register"
-            element={
-              <PublicOnlyRoute>
-                <RegisterPage />
-              </PublicOnlyRoute>
-            }
-          />
-          <Route path="/shared/:token" element={<SharedViewPage />} />
+        <Suspense fallback={<PageSuspenseFallback />}>
+          <Routes location={location}>
+            {/* Public Routes */}
+            <Route
+              path="/login"
+              element={
+                <PublicOnlyRoute>
+                  <LoginPage />
+                </PublicOnlyRoute>
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                <PublicOnlyRoute>
+                  <RegisterPage />
+                </PublicOnlyRoute>
+              }
+            />
+            <Route path="/shared/:token" element={<SharedViewPage />} />
 
-          {/* Protected Routes */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/upload"
-            element={
-              <ProtectedRoute>
-                <UploadPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/documents"
-            element={
-              <ProtectedRoute>
-                <DocumentsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/documents/:id"
-            element={
-              <ProtectedRoute>
-                <DocumentDetailPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/documents/:id/processing"
-            element={
-              <ProtectedRoute>
-                <ProcessingPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/processing/:id"
-            element={
-              <ProtectedRoute>
-                <ProcessingPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/documents/:id/results"
-            element={
-              <ProtectedRoute>
-                <ResultsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/documents/:id/chat"
-            element={
-              <ProtectedRoute>
-                <ResultsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/vault"
-            element={
-              <ProtectedRoute>
-                <VaultPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/vault/calendar"
-            element={
-              <ProtectedRoute>
-                <VaultPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute>
-                <SettingsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/settings/integrations"
-            element={
-              <ProtectedRoute>
-                <IntegrationsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/integrations"
-            element={
-              <ProtectedRoute>
-                <IntegrationsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/integrations/callback"
-            element={
-              <ProtectedRoute>
-                <OAuthCallbackPage />
-              </ProtectedRoute>
-            }
-          />
+            {/* Protected Routes */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/upload"
+              element={
+                <ProtectedRoute>
+                  <UploadPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/documents"
+              element={
+                <ProtectedRoute>
+                  <DocumentsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/documents/:id"
+              element={
+                <ProtectedRoute>
+                  <DocumentDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/documents/:id/processing"
+              element={
+                <ProtectedRoute>
+                  <ProcessingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/processing/:id"
+              element={
+                <ProtectedRoute>
+                  <ProcessingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/documents/:id/results"
+              element={
+                <ProtectedRoute>
+                  <ResultsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/documents/:id/chat"
+              element={
+                <ProtectedRoute>
+                  <ResultsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/vault"
+              element={
+                <ProtectedRoute>
+                  <VaultPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/vault/calendar"
+              element={
+                <ProtectedRoute>
+                  <VaultPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <SettingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings/integrations"
+              element={
+                <ProtectedRoute>
+                  <IntegrationsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/integrations"
+              element={
+                <ProtectedRoute>
+                  <IntegrationsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/integrations/callback"
+              element={
+                <ProtectedRoute>
+                  <OAuthCallbackPage />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Redirect Root to Dashboard */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            {/* Redirect Root to Dashboard */}
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-          {/* 404 Catch All */}
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+            {/* 404 Catch All */}
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Suspense>
       </motion.div>
     </AnimatePresence>
   );
@@ -194,6 +239,7 @@ export function App() {
 
   useEffect(() => {
     hydrate();
+    measurePageLoad();
   }, [hydrate]);
 
   return (

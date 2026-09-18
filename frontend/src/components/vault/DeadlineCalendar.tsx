@@ -78,24 +78,28 @@ export const DeadlineCalendar: React.FC<DeadlineCalendarProps> = ({ contracts })
 
   return (
     <div className="rounded-2xl bg-slate-900/80 border border-slate-800 overflow-hidden shadow-2xl backdrop-blur-xl">
-      <BigCalendar
-        localizer={localizer}
-        events={events}
-        startAccessor="start"
-        endAccessor="end"
-        view={currentView}
-        onView={(v) => setCurrentView(v)}
-        date={currentDate}
-        onNavigate={(d) => setCurrentDate(d)}
-        onSelectEvent={handleSelectEvent}
-        style={{ height: 650 }}
-        components={{
-          toolbar: (props) => (
-            <CalendarToolbar {...props} onExportCalendar={handleExport} />
-          ),
-          event: ({ event }) => <CalendarEvent event={event as CalendarEventData} />,
-        }}
-      />
+      <div className="overflow-x-auto">
+        <div className="min-w-[640px]">
+          <BigCalendar
+            localizer={localizer}
+            events={events}
+            startAccessor="start"
+            endAccessor="end"
+            view={currentView}
+            onView={(v) => setCurrentView(v)}
+            date={currentDate}
+            onNavigate={(d) => setCurrentDate(d)}
+            onSelectEvent={handleSelectEvent}
+            style={{ height: 650 }}
+            components={{
+              toolbar: (props) => (
+                <CalendarToolbar {...props} onExportCalendar={handleExport} />
+              ),
+              event: ({ event }) => <CalendarEvent event={event as CalendarEventData} />,
+            }}
+          />
+        </div>
+      </div>
 
       {/* Dark Mode Calendar CSS Overrides */}
       <style>{`
