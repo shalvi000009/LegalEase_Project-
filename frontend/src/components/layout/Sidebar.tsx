@@ -7,17 +7,19 @@ import {
   Shield,
   Settings,
   X,
+  Radio,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../hooks/useAuth';
 import { useVaultStore } from '../../store/vaultStore';
+import { useIntegrationStore } from '../../store/integrationStore';
 
 interface NavItem {
   icon: React.ElementType;
   label: string;
   href: string;
   badge?: string;
-  getBadge?: (expiringCount: number) => string | undefined;
+  getBadge?: (expiringCount: number, activeIntegrations: number) => string | undefined;
 }
 
 const navItems: NavItem[] = [
@@ -30,6 +32,12 @@ const navItems: NavItem[] = [
     href: '/vault',
     getBadge: (count: number) => count > 0 ? `${count} expiring` : undefined
   },
+  { 
+    icon: Radio, 
+    label: 'Auto-Scan', 
+    href: '/integrations',
+    getBadge: (_, activeCount) => activeCount > 0 ? `${activeCount} live` : undefined
+  },
   { icon: Settings, label: 'Settings', href: '/settings' },
 ];
 
@@ -41,7 +49,9 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onCloseMobile }) => {
   const { user } = useAuth();
   const contracts = useVaultStore((state) => state.contracts);
+  const integrations = useIntegrationStore((state) => state.integrations);
   const expiringCount = contracts.filter((c) => c.status === 'expiring_soon' || (c.daysRemaining > 0 && c.daysRemaining <= 30)).length;
+  const activeIntegrationsCount = integrations.filter((i) => i.isActive).length;
 
   const sidebarContent = (
     <div className="h-full flex flex-col justify-between p-4">
@@ -63,7 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onCloseMob
 
         {navItems.map((item) => {
           const Icon = item.icon;
-          const badgeText = item.getBadge ? item.getBadge(expiringCount) : item.badge;
+          const badgeText = item.getBadge ? item.getBadge(expiringCount, activeIntegrationsCount) : item.badge;
 
           return (
             <NavLink

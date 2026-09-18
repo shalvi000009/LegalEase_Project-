@@ -18,6 +18,8 @@ import { ResultsPage } from './pages/ResultsPage';
 import { SharedViewPage } from './pages/SharedViewPage';
 import { VaultPage } from './pages/VaultPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { IntegrationsPage } from './pages/IntegrationsPage';
+import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 const queryClient = new QueryClient({
@@ -148,6 +150,30 @@ function AnimatedRoutes() {
             element={
               <ProtectedRoute>
                 <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings/integrations"
+            element={
+              <ProtectedRoute>
+                <IntegrationsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/integrations"
+            element={
+              <ProtectedRoute>
+                <IntegrationsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/integrations/callback"
+            element={
+              <ProtectedRoute>
+                <OAuthCallbackPage />
               </ProtectedRoute>
             }
           />
