@@ -1,32 +1,43 @@
 """
 routers/internal_classify.py
 =============================
-Week 3 — Deliverable 3: POST /internal/classify
+Week 3 & Week 5: POST /internal/classify & POST /api/v1/analyze
 
-Internal FastAPI route called by Shalvi's BullMQ classification worker to
-classify clauses and score risk for a document.
+Exposes the classification & risk scoring router.
+Updated in Week 5 to support:
+  - Scanned PDF OCR fallback
+  - Expected clause checklist / missing clause detection
+  - Suggested questions generation
+  - Compatibility with Shalvi's worker (supporting both doc_id/document_id and /api/v1/analyze)
 """
 
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 # pyrefly: ignore [missing-import]
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from classification.classifier import ClauseClassifier
 from classification.risk_scoring import RiskEngine
 from extraction.chunker import chunk_text
 from extraction.ocr_preprocessor import preprocess_and_ocr
-from extraction.pdf_extractor import extract_text_from_pdf, is_scanned_pdf
+from extraction.pdf_extractor import (
+    extract_text_from_pdf,
+    extract_text_from_scanned_pdf,
+    is_scanned_pdf,
+)
 
 logger = logging.getLogger(__name__)
 
+# Router for internal endpoints (e.g. /internal/classify)
 router = APIRouter(prefix="/internal", tags=["Internal"])
+
+# Router for api/v1 compatibility endpoints (e.g. /api/v1/analyze)
+api_v1_router = APIRouter(prefix="/api/v1", tags=["Analysis"])
 
 # Sample docs directory for offline fallback
 _SAMPLE_DOCS_DIR = Path(__file__).parent.parent / "sample_docs"
@@ -37,7 +48,10 @@ _SAMPLE_DOCS_DIR = Path(__file__).parent.parent / "sample_docs"
 # ---------------------------------------------------------------------------
 
 class ClassifyRequest(BaseModel):
-    doc_id: str = Field(..., description="Unique document identifier (UUID).")
+    doc_id: Optional[str] = Field(
+        None,
+        description="Unique document identifier (UUID). Populated automatically from document_id if needed."
+    )
     s3_key: Optional[str] = Field(
         None,
         description=(
@@ -45,6 +59,15 @@ class ClassifyRequest(BaseModel):
             "to using local sample docs for testing."
         ),
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_doc_id(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            # Support document_id sent by Shalvi's worker
+            if "document_id" in data and "doc_id" not in data:
+                data["doc_id"] = data["document_id"]
+        return data
 
 
 class ClauseResponseModel(BaseModel):
@@ -64,15 +87,20 @@ class ClassifyResponse(BaseModel):
     overall_risk_level: str
     clauses: List[ClauseResponseModel]
     classifier_method: str
+    # Week 5 additions
+    ocr_used: bool
+    missing_clauses: List[str]
+    suggested_questions: List[str]
 
 
 # ---------------------------------------------------------------------------
 # Helper function: retrieve and chunk document
 # ---------------------------------------------------------------------------
 
-def _get_document_chunks(doc_id: str, s3_key: Optional[str]) -> List[Dict[str, Any]]:
+def _get_document_chunks(doc_id: str, s3_key: Optional[str]) -> Dict[str, Any]:
     """
     Fetches the document text from S3/MinIO (or local sample fallback) and splits it into chunks.
+    Also returns whether OCR was used and the full extracted text.
     """
     # 1. Resolve local path
     if s3_key:
@@ -99,35 +127,27 @@ def _get_document_chunks(doc_id: str, s3_key: Optional[str]) -> List[Dict[str, A
     # 2. Extract text based on file extension
     suffix = local_path.suffix.lower()
     full_text = ""
+    ocr_used = False
     image_extensions = {".jpg", ".jpeg", ".png", ".tiff", ".tif", ".bmp", ".webp"}
 
     try:
         if suffix == ".pdf":
             if is_scanned_pdf(str(local_path)):
                 logger.info("Classify pipeline: Scanned PDF detected; routing through OCR.")
-                import fitz as _fitz  # type: ignore[import-untyped]
-                doc_fitz = _fitz.open(str(local_path))
-                page = doc_fitz.load_page(0)
-                mat = _fitz.Matrix(2.0, 2.0)
-                pix = page.get_pixmap(matrix=mat)
-                import numpy as _np
-                import cv2 as _cv2
-                img_bytes = pix.tobytes("png")
-                arr = _np.frombuffer(img_bytes, _np.uint8)
-                img_bgr = _cv2.imdecode(arr, _cv2.IMREAD_COLOR)
-                doc_fitz.close()
-
-                ocr_result = preprocess_and_ocr(img_bgr)
-                full_text = ocr_result["text"]
+                ocr_result = extract_text_from_scanned_pdf(str(local_path))
+                full_text = ocr_result["full_text"]
+                ocr_used = True
             else:
                 logger.info("Classify pipeline: Digital PDF detected; routing through text extractor.")
                 result = extract_text_from_pdf(str(local_path))
                 full_text = result["full_text"]
+                ocr_used = False
 
         elif suffix in image_extensions:
             logger.info("Classify pipeline: Raw image detected; routing through OCR.")
             ocr_result = preprocess_and_ocr(str(local_path))
             full_text = ocr_result["text"]
+            ocr_used = True
         else:
             raise HTTPException(
                 status_code=422,
@@ -142,38 +162,35 @@ def _get_document_chunks(doc_id: str, s3_key: Optional[str]) -> List[Dict[str, A
     # 3. Chunk text
     try:
         chunks = chunk_text(full_text, doc_id=doc_id)
-        return chunks
+        return {
+            "chunks": chunks,
+            "ocr_used": ocr_used,
+            "full_text": full_text
+        }
     except Exception as exc:
         logger.exception("Chunking failed during classification for doc_id='%s'", doc_id)
         raise HTTPException(status_code=500, detail=f"Chunking error: {exc}") from exc
 
 
 # ---------------------------------------------------------------------------
-# Route
+# Route handler
 # ---------------------------------------------------------------------------
 
-@router.post(
-    "/classify",
-    response_model=ClassifyResponse,
-    summary="Classify clauses and calculate risk scores for a document",
-    description=(
-        "Internal endpoint called by Shalvi's BullMQ classification worker. "
-        "Accepts `{doc_id, s3_key}`, retrieves/extracts the contract text, chunks it, "
-        "and runs Legal-BERT (or TF-IDF fallback) and the risk scoring rule engine on each clause chunk. "
-        "Returns the classification labels, confidence metrics, individual risk levels, and the overall document risk."
-    ),
-)
-async def classify_document(request: ClassifyRequest) -> ClassifyResponse:
+async def classify_document_handler(request: ClassifyRequest) -> ClassifyResponse:
     """
-    POST /internal/classify
+    Core handler logic for both endpoints.
     """
-    doc_id = request.doc_id
+    doc_id = request.doc_id or "unknown"
     s3_key = request.s3_key
     
-    logger.info("POST /internal/classify — doc_id='%s' s3_key='%s'", doc_id, s3_key)
+    logger.info("Classify request received — doc_id='%s' s3_key='%s'", doc_id, s3_key)
 
-    # 1. Fetch chunks
-    chunks = _get_document_chunks(doc_id, s3_key)
+    # 1. Fetch chunks & extraction metadata
+    doc_data = _get_document_chunks(doc_id, s3_key)
+    chunks = doc_data["chunks"]
+    ocr_used = doc_data["ocr_used"]
+    full_text = doc_data["full_text"]
+
     if not chunks:
         logger.warning("No chunks generated for doc_id='%s'. Returning empty clauses list.", doc_id)
         return ClassifyResponse(
@@ -183,6 +200,9 @@ async def classify_document(request: ClassifyRequest) -> ClassifyResponse:
             overall_risk_level="low",
             clauses=[],
             classifier_method="empty-doc",
+            ocr_used=ocr_used,
+            missing_clauses=[],
+            suggested_questions=[],
         )
 
     # 2. Initialize classifier & risk engine (singletons/cached)
@@ -230,14 +250,24 @@ async def classify_document(request: ClassifyRequest) -> ClassifyResponse:
     # Determine classifier method reporting
     method_str = ", ".join(sorted(classifier_methods_used))
 
+    # 5. Missing clauses & suggested questions analysis
+    from classification.checklist import analyze_reporting_features
+    report_features = analyze_reporting_features(full_text, [c.dict() for c in clauses])
+    missing_clauses = report_features["missing_clauses"]
+    suggested_questions = report_features["suggested_questions"]
+
     logger.info(
         "Classification complete for doc_id='%s': %d clauses classified, "
-        "overall_score=%d, overall_level='%s', method='%s'",
+        "overall_score=%d, overall_level='%s', method='%s', ocr_used=%s, "
+        "missing_clauses_count=%d, suggested_questions_count=%d",
         doc_id,
         len(clauses),
         overall_score,
         overall_level,
         method_str,
+        ocr_used,
+        len(missing_clauses),
+        len(suggested_questions),
     )
 
     return ClassifyResponse(
@@ -247,4 +277,28 @@ async def classify_document(request: ClassifyRequest) -> ClassifyResponse:
         overall_risk_level=overall_level,
         clauses=clauses,
         classifier_method=method_str,
+        ocr_used=ocr_used,
+        missing_clauses=missing_clauses,
+        suggested_questions=suggested_questions,
     )
+
+
+# Register routes to respective routers
+@router.post(
+    "/classify",
+    response_model=ClassifyResponse,
+    summary="Classify clauses and calculate risk scores for a document",
+    description="Internal endpoint called by Shalvi's BullMQ classification worker.",
+)
+async def classify_document_internal(request: ClassifyRequest) -> ClassifyResponse:
+    return await classify_document_handler(request)
+
+
+@api_v1_router.post(
+    "/analyze",
+    response_model=ClassifyResponse,
+    summary="Classify clauses and calculate risk scores for a document (api compatibility)",
+    description="Compatibility endpoint called by Shalvi's BullMQ worker.",
+)
+async def classify_document_api(request: ClassifyRequest) -> ClassifyResponse:
+    return await classify_document_handler(request)

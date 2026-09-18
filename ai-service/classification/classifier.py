@@ -17,14 +17,22 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 logger = logging.getLogger(__name__)
 
-# Try to import torch and transformers for legal-BERT
+# Try to import torch and transformers for legal-BERT (enabled only when USE_LEGAL_BERT=1)
 HAS_BERT_DEPS = False
-try:
-    import torch
-    from transformers import AutoModel, AutoTokenizer
-    HAS_BERT_DEPS = True
-except ImportError:
-    logger.warning("torch or transformers not installed. Will use TF-IDF fallback for classification.")
+if os.getenv("USE_LEGAL_BERT", "0") == "1":
+    try:
+        import torch
+        import transformers
+        from transformers import AutoModel, AutoTokenizer
+        if getattr(transformers, "is_torch_available", lambda: False)():
+            HAS_BERT_DEPS = True
+        else:
+            logger.warning("transformers reports torch not available. Using TF-IDF fallback for clause classification.")
+    except Exception as exc:
+        logger.warning("torch or transformers not available (%s). Will use TF-IDF fallback for classification.", exc)
+
+
+
 
 # ---------------------------------------------------------------------------
 # Archetypal reference sentences for the 12 clause types

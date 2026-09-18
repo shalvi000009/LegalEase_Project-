@@ -44,8 +44,15 @@ logger.info("Registered router: /internal/extract")
 
 # Week 3: Clause classification and risk scoring router
 from routers.internal_classify import router as classify_router  # noqa: E402
+from routers.internal_classify import api_v1_router as classify_api_v1_router  # noqa: E402
 app.include_router(classify_router)
-logger.info("Registered router: /internal/classify")
+app.include_router(classify_api_v1_router)
+logger.info("Registered routers: /internal/classify and /api/v1/analyze")
+
+# Week 6: Date extraction and resolution router
+from routers.internal_dates import router as dates_router  # noqa: E402
+app.include_router(dates_router)
+logger.info("Registered router: /internal/extract-dates")
 
 
 # ---------------------------------------------------------------------------
