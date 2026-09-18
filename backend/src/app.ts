@@ -5,6 +5,11 @@ import swaggerUi from "swagger-ui-express";
 import authRoutes from "./routes/auth.routes";
 import documentRoutes from "./routes/document.routes";
 import analysisRoutes from "./routes/analysis.routes";
+import chatRoutes from "./routes/chat.routes";
+import shareRoutes from "./routes/share.routes";
+import dateRoutes from "./routes/date.routes";
+import reminderRoutes from "./routes/reminder.routes";
+import notificationRoutes from "./routes/notification.routes";
 import { swaggerSpec } from "./config/swagger";
 import { errorHandler } from "./middleware/errorHandler";
 
@@ -12,8 +17,9 @@ dotenv.config();
 
 const app = express();
 
-// CORS configuration scoped to configured origin (defaulting to Vite dev port 5173)
-const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
+// CORS configuration scoped to configured origins (supporting comma-separated environment values)
+const corsOriginEnv = process.env.CORS_ORIGIN || "http://localhost:5173,http://localhost:3000";
+const corsOrigin = corsOriginEnv.includes(",") ? corsOriginEnv.split(",") : corsOriginEnv;
 app.use(cors({ origin: corsOrigin }));
 
 app.use(express.json());
@@ -58,6 +64,11 @@ app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/documents", documentRoutes);
 app.use("/api/v1/documents", analysisRoutes);
+app.use("/api/v1/documents", dateRoutes);
+app.use("/api/v1/reminders", reminderRoutes);
+app.use("/api/v1/notification-preferences", notificationRoutes);
+app.use("/api/v1/chat", chatRoutes);
+app.use("/api/v1/share", shareRoutes);
 
 // Centralized error handling
 app.use(errorHandler);

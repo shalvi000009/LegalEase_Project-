@@ -1,6 +1,7 @@
 import app from "./app";
 import { ensureBucketExists } from "./config/s3";
 import { startAnalysisWorker } from "./services/analysis.worker";
+import { startReminderWorker } from "./services/reminder.worker";
 
 const PORT = parseInt(process.env.PORT || "4000", 10);
 const HOST = "0.0.0.0";
@@ -10,12 +11,13 @@ const startServer = async () => {
     // 1. Ensure the S3/MinIO bucket exists on startup
     await ensureBucketExists();
 
-    // 2. Start background BullMQ worker
+    // 2. Start background BullMQ workers
     if (process.env.MOCK_SERVICES !== "true") {
-      const worker = startAnalysisWorker();
-      console.log("👷 Background document analysis worker started successfully.");
+      startAnalysisWorker();
+      startReminderWorker();
+      console.log("👷 Background analysis worker & reminder cron worker started successfully.");
     } else {
-      console.log("👷 Mock services enabled, background worker initialized inline.");
+      console.log("👷 Mock services enabled, background workers initialized inline.");
     }
 
     // 3. Start Express server

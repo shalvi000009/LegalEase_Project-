@@ -235,4 +235,89 @@ router.get("/:id/report", requireAuth, DocumentController.getDocumentReport);
 router.post("/:id/share", requireAuth, DocumentController.shareDocument);
 router.post("/:id/chat", requireAuth, DocumentController.streamChatSSE);
 
+/**
+ * @openapi
+ * /api/v1/documents/{id}/report:
+ *   get:
+ *     summary: Download PDF contract analysis report
+ *     description: Generates and downloads a complete PDF report of the contract analysis (including metadata, overall risk score, classified clauses, missing clauses, and chat history summary) using Puppeteer.
+ *     tags:
+ *       - Documents
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The unique ID of the document to retrieve report for
+ *     responses:
+ *       200:
+ *         description: PDF file retrieved successfully. Returns binary PDF.
+ *         headers:
+ *           Content-Type:
+ *             schema:
+ *               type: string
+ *               example: application/pdf
+ *           Content-Disposition:
+ *             schema:
+ *               type: string
+ *               example: attachment; filename="report-contract.pdf"
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Document or analysis not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get("/:id/report", requireAuth, DocumentController.generatePDFReport);
+
+/**
+ * @openapi
+ * /api/v1/documents/{id}/share:
+ *   post:
+ *     summary: Generate signed expiring link for public sharing
+ *     description: Generates a JWT share token valid for 24 hours that allows read-only public access to the document's analysis.
+ *     tags:
+ *       - Documents
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The unique ID of the document to generate share link for
+ *     responses:
+ *       200:
+ *         description: Share link generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 shareLink:
+ *                   type: string
+ *                   example: "http://localhost:4000/api/v1/share/jwt-token-string"
+ *                 expiresAt:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2026-08-04T12:00:00.000Z"
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Document not found or access denied
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post("/:id/share", requireAuth, DocumentController.generateShareLink);
+
 export default router;
