@@ -112,6 +112,14 @@ export const VaultPage: React.FC = () => {
         {/* Top Header Buttons */}
         <div className="flex items-center gap-2.5 flex-wrap">
           <button
+            onClick={() => navigate('/settings')}
+            className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors"
+            title="Notification Settings"
+          >
+            <Bell className="w-4 h-4 text-indigo-400" />
+            <span>Notification Settings</span>
+          </button>
+          <button
             onClick={handleExportICS}
             className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 text-xs font-semibold flex items-center gap-2 shadow-sm transition-colors"
           >

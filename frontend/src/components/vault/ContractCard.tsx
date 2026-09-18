@@ -10,7 +10,8 @@ import {
   Trash2, 
   Edit3, 
   ExternalLink,
-  ShieldAlert
+  ShieldAlert,
+  Bell
 } from 'lucide-react';
 import { ContractSummary, ContractStatus } from '../../types/dates';
 
@@ -155,10 +156,29 @@ export const ContractCard: React.FC<ContractCardProps> = ({
           </span>
         </div>
 
-        {contract.nextReminder && (
-          <span className="text-[11px] text-slate-400 truncate max-w-[120px]">
-            Remind: {contract.nextReminder}
-          </span>
+        {contract.nextReminder ? (
+          <div className="relative group/bell flex items-center gap-1 text-[11px] text-amber-400 font-semibold bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
+            <Bell className="w-3.5 h-3.5 animate-bounce text-amber-400" />
+            <span className="truncate max-w-[110px]">{contract.nextReminder}</span>
+            {/* Tooltip on hover */}
+            <div className="absolute bottom-full right-0 mb-2 hidden group-hover/bell:block w-48 p-2.5 rounded-xl bg-slate-800 border border-slate-700 text-[11px] text-slate-200 shadow-xl z-20">
+              <p className="font-bold text-white mb-0.5">Upcoming Reminder</p>
+              <p className="text-slate-300">Alert set for: {contract.nextReminder}</p>
+              <p className="text-[10px] text-slate-400 mt-1">Multi-channel alert enabled</p>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate('/settings');
+            }}
+            className="text-[11px] text-slate-500 hover:text-indigo-400 flex items-center gap-1 transition-colors"
+            title="Configure Reminders"
+          >
+            <Bell className="w-3 h-3" />
+            <span>Set Reminder</span>
+          </button>
         )}
       </div>
 
