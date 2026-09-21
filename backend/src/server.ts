@@ -2,6 +2,7 @@ import app from "./app";
 import { ensureBucketExists } from "./config/s3";
 import { startAnalysisWorker } from "./services/analysis.worker";
 import { startReminderWorker } from "./services/reminder.worker";
+import { startAutoScanWorker } from "./services/autoScan.worker";
 
 const PORT = parseInt(process.env.PORT || "4000", 10);
 const HOST = "0.0.0.0";
@@ -15,7 +16,8 @@ const startServer = async () => {
     if (process.env.MOCK_SERVICES !== "true") {
       startAnalysisWorker();
       startReminderWorker();
-      console.log("👷 Background analysis worker & reminder cron worker started successfully.");
+      startAutoScanWorker();
+      console.log("👷 Background analysis worker, reminder cron worker & auto-scan worker started successfully.");
     } else {
       console.log("👷 Mock services enabled, background workers initialized inline.");
     }

@@ -10,6 +10,8 @@ import shareRoutes from "./routes/share.routes";
 import dateRoutes from "./routes/date.routes";
 import reminderRoutes from "./routes/reminder.routes";
 import notificationRoutes from "./routes/notification.routes";
+import integrationRoutes from "./routes/integration.routes";
+import scanRoutes from "./routes/scan.routes";
 import { swaggerSpec } from "./config/swagger";
 import { errorHandler } from "./middleware/errorHandler";
 
@@ -69,6 +71,8 @@ app.use("/api/v1/reminders", reminderRoutes);
 app.use("/api/v1/notification-preferences", notificationRoutes);
 app.use("/api/v1/chat", chatRoutes);
 app.use("/api/v1/share", shareRoutes);
+app.use("/api/v1/integrations", integrationRoutes);
+app.use("/", scanRoutes);
 
 // Centralized error handling
 app.use(errorHandler);

@@ -17,6 +17,8 @@ model User {
   documents     Document[]
   reminders     Reminder[]
   notification_preference NotificationPreferences?
+  integrations  Integration[]
+  scan_logs     ScanLog[]
 
   @@map("users")
 }
@@ -53,6 +55,7 @@ model Document {
   analyses      Analysis[]
   chat_sessions ChatSession[]
   contract_dates ContractDate[]
+  scan_logs     ScanLog[]
 
   @@map("documents")
 }
@@ -206,4 +209,57 @@ model NotificationPreferences {
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("notification_preferences")
+}
+
+enum IntegrationProvider {
+  gmail
+  google_drive
+  inbound_email
+}
+
+enum ScanAction {
+  detected
+  classified
+  deduplicated
+  analyzed
+  skipped
+  failed
+}
+
+model Integration {
+  id               String              @id @default(uuid()) @db.Uuid
+  user_id          String              @map("user_id") @db.Uuid
+  provider         IntegrationProvider
+  access_token     String?             @map("access_token") @db.Text
+  refresh_token    String?             @map("refresh_token") @db.Text
+  scope            String?
+  last_scanned_at  DateTime?           @map("last_scanned_at")
+  folder_id        String?             @map("folder_id")
+  email_address    String?             @map("email_address")
+  is_active        Boolean             @default(true) @map("is_active")
+  created_at       DateTime            @default(now()) @map("created_at")
+  updated_at       DateTime            @updatedAt @map("updated_at")
+
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  scan_logs ScanLog[]
+
+  @@map("integrations")
+}
+
+model ScanLog {
+  id               String     @id @default(uuid()) @db.Uuid
+  user_id          String     @map("user_id") @db.Uuid
+  integration_id   String?    @map("integration_id") @db.Uuid
+  source_ref       String     @map("source_ref")
+  source_name      String     @map("source_name")
+  action           ScanAction
+  doc_id           String?    @map("doc_id") @db.Uuid
+  classifier_score Float?     @map("classifier_score")
+  created_at       DateTime   @default(now()) @map("created_at")
+
+  user        User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  integration Integration? @relation(fields: [integration_id], references: [id], onDelete: SetNull)
+  document    Document?    @relation(fields: [doc_id], references: [id], onDelete: SetNull)
+
+  @@map("scan_log")
 }
