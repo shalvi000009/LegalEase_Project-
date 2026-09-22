@@ -73,7 +73,14 @@ const ConfettiParticle: React.FC<{ index: number }> = ({ index }) => {
 export const ProcessingPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const docId = id || 'mock-doc-123';
+
+  useEffect(() => {
+    if (!id) {
+      navigate('/upload');
+    }
+  }, [id, navigate]);
+
+  const docId = id || '';
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);

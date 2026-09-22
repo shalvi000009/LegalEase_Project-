@@ -121,61 +121,45 @@ export const MOCK_ANALYSIS_RESULT: AnalysisResult = {
  * Endpoint: GET /api/v1/documents/{id}/analysis
  */
 export async function getDocumentAnalysis(docId: string): Promise<AnalysisResult> {
-  try {
-    const res = await apiClient.get(`/documents/${docId}/analysis`);
-    const data = res.data;
+  const res = await apiClient.get(`/documents/${docId}/analysis`);
+  const data = res.data;
 
-    // Transform backend database response to AnalysisResult standard shape
-    if (data && (data.analysis || data.clauses || data.overall_risk_score !== undefined)) {
-      const analysisData = data.analysis || data;
-      const clausesRaw = analysisData.clauses || analysisData.red_flags || [];
+  const analysisData = data.analysis || data;
+  const clausesRaw = analysisData.clauses || analysisData.red_flags || [];
 
-      const transformedClauses = clausesRaw.map((c: any, index: number) => ({
-        clause_id: c.clause_id || c.id || `cl_${index + 1}`,
-        clause_type: c.clause_type || 'other',
-        risk_level: (c.risk_level as any) || (c.risk_score > 70 ? 'high' : c.risk_score > 40 ? 'medium' : 'low'),
-        explanation: c.explanation || c.matching_rules?.join('; ') || c.text || 'No explanation provided.',
-        original_text: c.original_text || c.text || '',
-        risk_score: typeof c.risk_score === 'number' ? c.risk_score : 50,
-        page_number: c.page_number || c.chunk_index || index + 1,
-        confidence: c.confidence ?? 0.9,
-        risk_reason: c.risk_reason || (c.matching_rules?.length ? c.matching_rules.join('. ') : undefined),
-        fair_standard: c.fair_standard,
-        matching_rules: c.matching_rules,
-      }));
+  const transformedClauses = clausesRaw.map((c: any, index: number) => ({
+    clause_id: c.clause_id || c.id || `cl_${index + 1}`,
+    clause_type: c.clause_type || 'other',
+    risk_level: (c.risk_level as any) || (c.risk_score > 70 ? 'high' : c.risk_score > 40 ? 'medium' : 'low'),
+    explanation: c.explanation || c.matching_rules?.join('; ') || c.text || 'No explanation provided.',
+    original_text: c.original_text || c.text || '',
+    risk_score: typeof c.risk_score === 'number' ? c.risk_score : 50,
+    page_number: c.page_number || c.chunk_index || index + 1,
+    confidence: c.confidence ?? 0.9,
+    risk_reason: c.risk_reason || (c.matching_rules?.length ? c.matching_rules.join('. ') : undefined),
+    fair_standard: c.fair_standard,
+    matching_rules: c.matching_rules,
+  }));
 
-      const overallScore = analysisData.overall_risk_score ?? analysisData.risk_score ?? 50;
-      const overallLevel =
-        analysisData.overall_risk_level ??
-        analysisData.risk_level ??
-        (overallScore > 70 ? 'high' : overallScore > 40 ? 'medium' : 'low');
+  const overallScore = analysisData.overall_risk_score ?? analysisData.risk_score ?? 50;
+  const overallLevel =
+    analysisData.overall_risk_level ??
+    analysisData.risk_level ??
+    (overallScore > 70 ? 'high' : overallScore > 40 ? 'medium' : 'low');
 
-      return {
-        doc_id: docId,
-        filename: analysisData.filename || data.filename || `Document_${docId.substring(0, 8)}.pdf`,
-        risk_score: overallScore,
-        risk_level: overallLevel,
-        summary: analysisData.summary || 'Document analysis completed successfully.',
-        key_obligations: analysisData.key_obligations || [],
-        other_obligations: analysisData.other_obligations || [],
-        red_flags: transformedClauses,
-        missing_clauses: analysisData.missing_clauses || [],
-        suggested_questions: analysisData.suggested_questions || [],
-        processing_time_ms: analysisData.processing_time_ms || 8500,
-        created_at: analysisData.created_at || new Date().toISOString(),
-        page_count: analysisData.page_count || 1,
-      };
-    }
-
-    return {
-      ...MOCK_ANALYSIS_RESULT,
-      doc_id: docId,
-    };
-  } catch (error) {
-    console.warn(`GET /api/v1/documents/${docId}/analysis failed or unmounted. Using mock analysis data:`, error);
-    return {
-      ...MOCK_ANALYSIS_RESULT,
-      doc_id: docId,
-    };
-  }
+  return {
+    doc_id: docId,
+    filename: analysisData.filename || data.filename || `Document_${docId.substring(0, 8)}.pdf`,
+    risk_score: overallScore,
+    risk_level: overallLevel,
+    summary: analysisData.summary || 'Document analysis completed successfully.',
+    key_obligations: analysisData.key_obligations || [],
+    other_obligations: analysisData.other_obligations || [],
+    red_flags: transformedClauses,
+    missing_clauses: analysisData.missing_clauses || [],
+    suggested_questions: analysisData.suggested_questions || [],
+    processing_time_ms: analysisData.processing_time_ms || 8500,
+    created_at: analysisData.created_at || new Date().toISOString(),
+    page_count: analysisData.page_count || 1,
+  };
 }

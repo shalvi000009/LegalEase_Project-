@@ -22,7 +22,14 @@ import { ResultsActions } from '../components/analysis/ResultsActions';
 export const ResultsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const docId = id || 'mock-doc-123';
+
+  React.useEffect(() => {
+    if (!id) {
+      navigate('/documents');
+    }
+  }, [id, navigate]);
+
+  const docId = id || '';
 
   // Fetch Analysis via TanStack Query Hook
   const { data: analysis, isLoading, isError, refetch } = useDocumentAnalysis(docId);
