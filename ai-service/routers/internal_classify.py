@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from classification.classifier import ClauseClassifier
 from classification.risk_scoring import RiskEngine
+from classification.versioning import CURRENT_MODEL_VERSION
 from extraction.chunker import chunk_text
 from extraction.ocr_preprocessor import preprocess_and_ocr
 from extraction.pdf_extractor import (
@@ -91,6 +92,8 @@ class ClassifyResponse(BaseModel):
     ocr_used: bool
     missing_clauses: List[str]
     suggested_questions: List[str]
+    # Week 8 additions
+    model_version: str = CURRENT_MODEL_VERSION
 
 
 # ---------------------------------------------------------------------------
@@ -280,6 +283,7 @@ async def classify_document_handler(request: ClassifyRequest) -> ClassifyRespons
         ocr_used=ocr_used,
         missing_clauses=missing_clauses,
         suggested_questions=suggested_questions,
+        model_version=CURRENT_MODEL_VERSION,
     )
 
 

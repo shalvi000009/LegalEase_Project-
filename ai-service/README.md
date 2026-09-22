@@ -208,6 +208,82 @@ curl -s -X POST http://localhost:8000/internal/classify-source-doc \
 
 ---
 
+## Week 8 (Model Versioning & Weekly Re-Analysis Job)
+
+### Deliverables
+
+| # | Deliverable | File | Status |
+|---|---|---|---|
+| 1 | Model versioning system (`legalease-v1.2.0`) & stale flagging script | `classification/versioning.py`, `scripts/flag_stale_analyses.py` | ✅ Fully functional |
+| 2 | Weekly re-analysis job logic with Token Bucket rate limiting (batches <= 50) | `classification/rate_limiter.py`, `routers/internal_reanalyze.py` | ✅ Fully functional |
+| 3 | Diff detection engine (+/-15 risk shift & newly surfaced red flags) | `classification/diff_detector.py` | ✅ Fully functional |
+| 4 | `POST /internal/reanalyze-batch` & `POST /internal/check-stale` routes | `routers/internal_reanalyze.py` | ✅ Routes live |
+
+### POST /internal/reanalyze-batch — API Contract
+
+> **Called by**: Shalvi's Sunday 2:00 AM BullMQ re-analysis worker  
+> **URL**: `POST http://ai-service:8000/internal/reanalyze-batch`
+
+**Request body (JSON):**
+```json
+{
+  "documents": [
+    {
+      "document_id": "8a32b0f4-52d3-49fb-9457-41804b408e01",
+      "s3_key": "user_1/8a32b0f4/contract.pdf",
+      "previous_analysis": {
+        "overall_risk_score": 40,
+        "model_version": "legal-bert-v1.0.0",
+        "clauses": []
+      }
+    }
+  ],
+  "force_reanalyze": false,
+  "rate_limit_rpm": 60
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "status": "ok",
+  "current_model_version": "legalease-v1.2.0",
+  "total_requested": 1,
+  "total_processed": 1,
+  "total_reanalyzed": 1,
+  "total_skipped": 0,
+  "total_notifications_triggered": 1,
+  "results": [
+    {
+      "document_id": "8a32b0f4-52d3-49fb-9457-41804b408e01",
+      "status": "reanalyzed",
+      "model_version": "legalease-v1.2.0",
+      "diff_detected": true,
+      "notify_user": true,
+      "score_delta": 20,
+      "new_overall_score": 60,
+      "previous_overall_score": 40,
+      "new_red_flags_count": 1,
+      "reasons": [
+        "Overall contract risk score shifted significantly by +20 points (from 40 to 60)."
+      ]
+    }
+  ]
+}
+```
+
+### Local Dev — Week 8 Testing
+
+```bash
+# Run Week 8 acceptance test suite
+.venv/bin/python scripts/test_week8_reanalysis.py
+
+# Run stale flagging CLI script
+.venv/bin/python scripts/flag_stale_analyses.py
+```
+
+---
+
 ## Environment Variables
 
 ```env
