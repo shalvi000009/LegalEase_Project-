@@ -34,18 +34,28 @@ export type RegisterInput = z.infer<typeof registerSchema>;
  * Login User API
  */
 export async function loginUser(credentials: LoginCredentials): Promise<AuthResponse> {
-  return await apiPost<AuthResponse>('/auth/login', credentials);
+  const data = await apiPost<any>('/auth/login', credentials);
+  return {
+    user: data.user,
+    accessToken: data.tokens?.accessToken || data.accessToken,
+    refreshToken: data.tokens?.refreshToken || data.refreshToken,
+  };
 }
 
 /**
  * Register User API
  */
 export async function registerUser(data: RegisterData): Promise<AuthResponse> {
-  return await apiPost<AuthResponse>('/auth/register', {
+  const resData = await apiPost<any>('/auth/register', {
     name: data.name,
     email: data.email,
     password: data.password,
   });
+  return {
+    user: resData.user,
+    accessToken: resData.tokens?.accessToken || resData.accessToken,
+    refreshToken: resData.tokens?.refreshToken || resData.refreshToken,
+  };
 }
 
 /**

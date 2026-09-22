@@ -118,6 +118,16 @@ export const startAnalysisWorker = (): Worker => {
         const riskDimensions = calculateAggregatedRiskDimensions(preparedClauses);
         const weightedOverallScore = calculateWeightedOverallRiskScore(riskDimensions);
 
+        // If no clauses were extracted, reject document as non-contract
+        if (preparedClauses.length === 0) {
+          await prisma.document.update({
+            where: { id: documentId },
+            data: { status: "failed" },
+          });
+          console.log(`[Worker] Document ${documentId} failed analysis: No legal contract clauses found.`);
+          return;
+        }
+
         // Store analysis
         const analysis = await prisma.analysis.create({
           data: {
@@ -129,19 +139,17 @@ export const startAnalysisWorker = (): Worker => {
         });
 
         // Store clauses
-        if (preparedClauses.length > 0) {
-          await prisma.clause.createMany({
-            data: preparedClauses.map((c: any) => ({
-              analysis_id: analysis.id,
-              clause_type: c.clause_type,
-              risk_level: c.risk_level,
-              explanation: c.explanation,
-              original_text: c.original_text,
-              risk_score: c.risk_score,
-              dimension_contributions: c.dimension_contributions as any,
-            })),
-          });
-        }
+        await prisma.clause.createMany({
+          data: preparedClauses.map((c: any) => ({
+            analysis_id: analysis.id,
+            clause_type: c.clause_type,
+            risk_level: c.risk_level,
+            explanation: c.explanation,
+            original_text: c.original_text,
+            risk_score: c.risk_score,
+            dimension_contributions: c.dimension_contributions as any,
+          })),
+        });
 
         // 3. Transition status to done
         await prisma.document.update({

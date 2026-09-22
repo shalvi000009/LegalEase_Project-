@@ -30,6 +30,22 @@ export class DocumentController {
         throw new BadRequestError(`File size exceeds the 10MB limit.`);
       }
 
+      // Legal contract validation check
+      const fileText = req.file.buffer.toString("utf-8", 0, Math.min(req.file.buffer.length, 10000)).toLowerCase();
+      const filenameLower = req.file.originalname.toLowerCase();
+
+      const CONTRACT_KEYWORDS = [
+        "agreement", "contract", "terms", "condition", "shall", "party", "parties",
+        "liability", "termination", "indemnif", "governing law", "clause", "section",
+        "nda", "mou", "warranty", "confidential", "employment", "service", "license"
+      ];
+
+      const hasContractKeyword = CONTRACT_KEYWORDS.some((kw) => fileText.includes(kw) || filenameLower.includes(kw));
+
+      if (!hasContractKeyword) {
+        throw new BadRequestError("The uploaded file does not appear to be a legal contract document. Please upload a valid contract (e.g. NDA, Employment Agreement, MSA).");
+      }
+
       const documentId = crypto.randomUUID();
       const s3Key = `uploads/${reqAuth.user.id}/${documentId}-${req.file.originalname}`;
 
