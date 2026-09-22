@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import swaggerUi from "swagger-ui-express";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import authRoutes from "./routes/auth.routes";
 import documentRoutes from "./routes/document.routes";
 import analysisRoutes from "./routes/analysis.routes";
@@ -19,12 +21,36 @@ dotenv.config();
 
 const app = express();
 
+// Security headers via helmet
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // Allows Swagger UI inline resources
+  })
+);
+
 // CORS configuration scoped to configured origins (supporting comma-separated environment values)
 const corsOriginEnv = process.env.CORS_ORIGIN || "http://localhost:5173,http://localhost:3000";
 const corsOrigin = corsOriginEnv.includes(",") ? corsOriginEnv.split(",") : corsOriginEnv;
 app.use(cors({ origin: corsOrigin }));
 
 app.use(express.json());
+
+// Rate Limiters
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // Limit each IP to 30 auth requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "TOO_MANY_REQUESTS", message: "Too many authentication requests, please try again later." },
+});
+
+const chatLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 chat requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "TOO_MANY_REQUESTS", message: "Too many chat requests, please try again later." },
+});
 
 // Root route redirecting to live Swagger UI
 app.get("/", (_req, res) => {
@@ -62,17 +88,17 @@ app.get("/docs/openapi.json", (_req, res) => {
 // Swagger UI live documentation endpoint
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// API Routes
-app.use("/api/v1/auth", authRoutes);
+// API Routes with rate limiters applied
+app.use("/api/v1/auth", authLimiter, authRoutes);
 app.use("/api/v1/documents", documentRoutes);
 app.use("/api/v1/documents", analysisRoutes);
 app.use("/api/v1/documents", dateRoutes);
 app.use("/api/v1/reminders", reminderRoutes);
 app.use("/api/v1/notification-preferences", notificationRoutes);
-app.use("/api/v1/chat", chatRoutes);
+app.use("/api/v1/chat", chatLimiter, chatRoutes);
 app.use("/api/v1/share", shareRoutes);
 app.use("/api/v1/integrations", integrationRoutes);
-app.use("/", scanRoutes);
+app.use("/api/v1", scanRoutes);
 
 // Centralized error handling
 app.use(errorHandler);
