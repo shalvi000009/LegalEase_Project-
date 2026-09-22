@@ -80,9 +80,6 @@ class MockPrisma {
     findFirst: async ({ where }: any) => {
       return this.documents.find(d => d.id === where.id && d.user_id === where.user_id) || null;
     },
-    findUnique: async ({ where }: any) => {
-      return this.documents.find(d => d.id === where.id) || null;
-    },
     findMany: async ({ where, skip, take }: any) => {
       const filtered = this.documents.filter(d => d.user_id === where.user_id);
       return filtered.slice(skip || 0, (skip || 0) + (take || 10));

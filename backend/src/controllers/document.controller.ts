@@ -408,6 +408,4 @@ export class DocumentController {
       next(error);
     }
   }
-=======
->>>>>>> feature/aiml
 }

@@ -50,6 +50,25 @@ services:
       timeout: 5s
       retries: 5
 
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: legalease-ai-service
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: 8000
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-mock-key}
+      PINECONE_API_KEY: ${PINECONE_API_KEY:-mock-key}
+      PINECONE_INDEX_NAME: ${PINECONE_INDEX_NAME:-legalease-contracts}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
