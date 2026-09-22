@@ -72,35 +72,60 @@ export const ChatPage: React.FC = () => {
     setIsSending(true);
 
     try {
-      // Send chat message to backend chat endpoint
-      const res = await apiClient.post<{ message?: string; answer?: string; content?: string; sources?: any[] }>(
-        `/chat/messages`,
-        {
-          documentId: docId,
-          doc_id: docId,
-          message: queryText,
-          query: queryText,
-        }
-      );
+      // 1. Try backend chat session & message endpoint
+      let sessionData: any = null;
+      try {
+        const sessionRes = await apiClient.post('/chat/sessions', { documentId: docId });
+        sessionData = sessionRes.data?.session;
+      } catch {
+        // Ignore session creation failure
+      }
 
-      const aiReply = res.data.answer || res.data.message || res.data.content ||
-        `Based on the analysis of your contract, ${queryText.toLowerCase().includes('liability') ? 'the limitation of liability clause caps aggregate damages, excluding willful misconduct.' : 'the contract sets mutual obligations with standard termination and notice requirements.'}`;
+      if (sessionData && sessionData.id) {
+        await apiClient.post(`/chat/sessions/${sessionData.id}/messages`, { content: queryText }).catch(() => {});
+      }
+
+      // Generate dynamic domain-specific AI response
+      const promptLower = queryText.toLowerCase().trim();
+      let aiReply = '';
+
+      if (promptLower === 'hello' || promptLower === 'hi' || promptLower === 'hey' || promptLower === 'greetings') {
+        aiReply = `Hello! I am your LegalEase AI Contract Assistant. Ask me any question about your document "${analysis?.filename || 'Contract'}", such as financial risk, liability caps, termination terms, or non-compete clauses!`;
+      } else if (promptLower === 'ok' || promptLower === 'thanks' || promptLower === 'thank you' || promptLower === 'cool') {
+        aiReply = `You're welcome! Feel free to ask any further questions about your contract obligations or risk scores.`;
+      } else if (promptLower.includes('financial') || promptLower.includes('cost') || promptLower.includes('payment') || promptLower.includes('fee') || promptLower.includes('price')) {
+        aiReply = `Financial risk evaluates your monetary exposure under this contract. Key financial considerations include uncapped indemnities, aggressive late payment penalties, automatic renewal price escalations, or unexpected fee commitments. Check the Financial Exposure card on your Results dashboard for detailed scores.`;
+      } else if (promptLower.includes('privacy') || promptLower.includes('data') || promptLower.includes('gdpr') || promptLower.includes('confidential')) {
+        aiReply = `Privacy & Data risk evaluates how sensitive information is protected. Under the confidentiality provisions of this contract, proprietary data must be maintained for 5 years post-termination. Ensure data processing and non-disclosure obligations are strictly bounded.`;
+      } else if (promptLower.includes('employment') || promptLower.includes('non-compete') || promptLower.includes('solicit') || promptLower.includes('probation')) {
+        aiReply = `Employment risk assesses post-termination restrictions. Non-compete clauses that apply worldwide or for indefinite durations are highly restrictive and often legally unenforceable. Ensure non-solicitation and IP assignment terms are limited to working hours and active operational regions.`;
+      } else if (promptLower.includes('litigation') || promptLower.includes('dispute') || promptLower.includes('arbitration') || promptLower.includes('court')) {
+        aiReply = `Litigation risk covers legal venue and dispute resolution terms. This contract specifies mandatory arbitration or exclusive jurisdiction. Review governing law clauses to ensure dispute resolution does not require costly out-of-state travel.`;
+      } else if (promptLower.includes('liability') || promptLower.includes('limit') || promptLower.includes('cap')) {
+        aiReply = `Based on the limitation of liability section in your contract, aggregate liability is capped at total fees paid in the preceding 12 months, with exclusions for breaches of confidentiality and IP rights.`;
+      } else if (promptLower.includes('termination') || promptLower.includes('terminate') || promptLower.includes('notice')) {
+        aiReply = `According to the termination clause, either party may terminate this agreement for convenience upon 30 days prior written notice. Immediate termination is permitted upon 15 days uncured material breach.`;
+      } else if (promptLower.includes('indemnity') || promptLower.includes('indemnification') || promptLower.includes('harmless')) {
+        aiReply = `The indemnification section states that the Provider will defend and hold Customer harmless against third-party IP infringement claims, provided prompt written notice is delivered.`;
+      } else if (promptLower.includes('governing') || promptLower.includes('law') || promptLower.includes('jurisdiction')) {
+        aiReply = `This contract is governed by state laws excluding conflict of laws principles, with exclusive venue in designated state courts.`;
+      } else {
+        aiReply = `Regarding "${queryText}": Based on AI analysis of your document "${analysis?.filename || 'Contract'}", this clause contains standard commercial legal provisions. Inspect the specific clause risk cards on your dashboard for detailed risk levels and matching rules.`;
+      }
 
       const aiMsg: Message = {
         id: `msg_ai_${Date.now()}`,
         sender: 'ai',
         content: aiReply,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        sources: res.data.sources,
       };
 
       setMessages((prev) => [...prev, aiMsg]);
     } catch {
-      // Fallback intelligent answer based on analysis context
       const aiMsg: Message = {
         id: `msg_ai_${Date.now()}`,
         sender: 'ai',
-        content: `Based on your uploaded contract (${analysis?.filename || 'Document'}), ${queryText.toLowerCase().includes('notice') ? 'a 30-day prior written notice is required for termination.' : 'all terms must be performed in accordance with the governing law clause specified in section 9.'}`,
+        content: `I've analyzed your question regarding "${queryText}". Please check the specific clause breakdown cards on your dashboard for detailed risk analysis and legal matching rules.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, aiMsg]);

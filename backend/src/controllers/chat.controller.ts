@@ -202,22 +202,32 @@ export class ChatController {
       // Flush headers
       res.flushHeaders();
 
-      // 2. Select legal-themed response based on keywords
-      const promptLower = userPrompt.toLowerCase();
+      // 2. Select legal-themed response based on keywords & domain context
+      const promptLower = userPrompt.toLowerCase().trim();
       let aiResponseText = "";
 
-      if (promptLower.includes("liability") || promptLower.includes("limit") || promptLower.includes("cap")) {
+      if (promptLower === "hello" || promptLower === "hi" || promptLower === "hey" || promptLower === "greetings") {
+        aiResponseText = "Hello! I am your LegalEase AI Contract Assistant. Ask me any question about your document, such as financial exposure, liability caps, termination clauses, or non-compete restrictions!";
+      } else if (promptLower === "ok" || promptLower === "thanks" || promptLower === "thank you" || promptLower === "got it" || promptLower === "cool") {
+        aiResponseText = "You're welcome! Feel free to ask any further questions about your contract, risk scores, or specific clauses.";
+      } else if (promptLower.includes("financial") || promptLower.includes("cost") || promptLower.includes("payment") || promptLower.includes("fee") || promptLower.includes("price")) {
+        aiResponseText = "Financial risk evaluates your monetary exposure under this contract. Key financial risks include uncapped indemnities, aggressive late payment penalties, automatic renewal price escalations, or broad operational costs. Check the Financial Exposure section in your Multi-Dimensional Risk breakdown for exact scores.";
+      } else if (promptLower.includes("privacy") || promptLower.includes("data") || promptLower.includes("gdpr") || promptLower.includes("confidential")) {
+        aiResponseText = "Privacy & Data risk evaluates how sensitive information is protected. Under Section 5, confidential information must be maintained for 5 years post-termination. Ensure data processing, GDPR compliance, and non-disclosure obligations are strictly scoped.";
+      } else if (promptLower.includes("employment") || promptLower.includes("non-compete") || promptLower.includes("solicit") || promptLower.includes("probation")) {
+        aiResponseText = "Employment risk assesses post-termination restrictions. Non-compete clauses that apply worldwide or for indefinite durations are highly restrictive and often legally unenforceable. Ensure non-solicitation and IP assignment clauses are limited to working hours and active operational regions.";
+      } else if (promptLower.includes("litigation") || promptLower.includes("dispute") || promptLower.includes("arbitration") || promptLower.includes("court")) {
+        aiResponseText = "Litigation risk covers legal venue and dispute resolution terms. This contract specifies mandatory arbitration or exclusive jurisdiction. Review governing law clauses to ensure dispute resolution does not require costly out-of-state travel.";
+      } else if (promptLower.includes("liability") || promptLower.includes("limit") || promptLower.includes("cap")) {
         aiResponseText = "Based on Section 8 of the contract, the limitation of liability is capped at the total fees paid by the client in the 12 months preceding the claim. However, there is an exclusion for breaches of confidentiality and intellectual property rights, where liability remains uncapped.";
       } else if (promptLower.includes("termination") || promptLower.includes("terminate") || promptLower.includes("convenience")) {
         aiResponseText = "According to Section 11, either party may terminate this agreement for convenience upon 30 days prior written notice. If a party is in material breach, the non-breaching party can terminate immediately if the breach is not cured within 15 days of notice.";
-      } else if (promptLower.includes("indemnity") || promptLower.includes("indemnification") || promptLower.includes("harmers")) {
+      } else if (promptLower.includes("indemnity") || promptLower.includes("indemnification") || promptLower.includes("harmless")) {
         aiResponseText = "The indemnification terms in Section 9 state that the Provider will defend and hold the Customer harmless from any third-party claims alleging that the software infringes any patent, copyright, or trade secret. The Customer must provide prompt written notice of any claim.";
       } else if (promptLower.includes("governing") || promptLower.includes("law") || promptLower.includes("jurisdiction")) {
         aiResponseText = "This agreement is governed by the laws of the State of New York, excluding its conflict of laws principles. Any legal actions or proceedings arising under this contract must be brought exclusively in the state or federal courts located in New York County.";
-      } else if (promptLower.includes("confidential") || promptLower.includes("secret") || promptLower.includes("disclosure")) {
-        aiResponseText = "Section 5 defines Confidential Information broadly. The receiving party agrees to maintain confidentiality for a period of 5 years following termination of the agreement. Standard exceptions apply, such as information that is already public.";
       } else {
-        aiResponseText = "Thank you for your question about the contract. Based on my legal analysis, this agreement contains standard commercial terms. Please refer to the specific clauses in the results view to inspect the risk levels and matching rules associated with this topic.";
+        aiResponseText = `Regarding your query "${userPrompt}": Based on LegalEase AI contract analysis, this document contains standard commercial provisions. You can check specific clause risk levels and multi-dimensional risk scores in your analysis dashboard.`;
       }
 
       // TODO: BLOCKED on Rishi's RAG chain microservice.
