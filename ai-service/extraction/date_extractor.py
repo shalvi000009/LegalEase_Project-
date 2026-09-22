@@ -153,13 +153,17 @@ def parse_absolute_date(date_str: str) -> Optional[str]:
     """
     # Clean ordinal suffixes like 15th, 1st, 2nd, 3rd
     clean_str = re.sub(r"(\d+)(?:st|nd|rd|th)", r"\1", date_str)
+    # Clean "day of" phrasing (e.g. "15 day of August, 2026" -> "15 August, 2026")
+    clean_str = re.sub(r"\bday\s+of\b", "", clean_str, flags=re.IGNORECASE)
+    clean_str = re.sub(r"\s+", " ", clean_str).strip()
+    clean_str = clean_str.replace(" ,", ",")
     
     # Try various formats
     formats = [
         "%d.%m.%Y", "%d/%m/%Y", "%d-%m-%Y",
         "%Y.%m.%d", "%Y/%m/%d", "%Y-%m-%d",
         "%B %d, %Y", "%b %d, %Y", "%d %B %Y", "%d %b %Y",
-        "%B %d %Y", "%b %d %Y"
+        "%B %d %Y", "%b %d %Y", "%d %B, %Y", "%d %b, %Y"
     ]
     
     for fmt in formats:

@@ -64,6 +64,11 @@ from routers.internal_reanalyze import router as reanalyze_router  # noqa: E402
 app.include_router(reanalyze_router)
 logger.info("Registered router: /internal/reanalyze-batch and /internal/check-stale")
 
+# Week 9: RAG Query with Redis caching and prompt optimization
+from routers.internal_rag import router as rag_router  # noqa: E402
+app.include_router(rag_router)
+logger.info("Registered router: /internal/rag-query")
+
 
 # ---------------------------------------------------------------------------
 # Week 1: Health check

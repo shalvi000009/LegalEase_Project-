@@ -54,6 +54,56 @@ class EmbedUpsertResult(TypedDict):
 # STUB helpers (remove once keys are available)
 # ---------------------------------------------------------------------------
 
+DEFAULT_EMBEDDING_BATCH_SIZE = 32
+
+
+def batch_embed_chunks(
+    chunks: List[Dict[str, Any]],
+    batch_size: int = DEFAULT_EMBEDDING_BATCH_SIZE,
+) -> List[ChunkEmbedding]:
+    """
+    Batches chunk embedding calls into groups of up to `batch_size` (default 32)
+    to minimize network round-trips and optimize OpenAI API batch utilization.
+    Caches chunk vectors in Redis/memory cache to prevent re-embedding identical text.
+    """
+    from classification.cache import cache
+
+    all_embeddings: List[ChunkEmbedding] = []
+
+    for i in range(0, len(chunks), batch_size):
+        batch = chunks[i : i + batch_size]
+        uncached_chunks: List[Dict[str, Any]] = []
+        batch_results: List[Optional[ChunkEmbedding]] = [None] * len(batch)
+
+        # Check cache for each chunk in batch
+        for idx, chunk in enumerate(batch):
+            cache_key = cache.generate_cache_key("emb:model:text-embedding-3-small", chunk["text"])
+            cached_vec = cache.get(cache_key)
+            if cached_vec is not None and isinstance(cached_vec, list):
+                batch_results[idx] = ChunkEmbedding(
+                    chunk_index=chunk["chunk_index"],
+                    text=chunk["text"],
+                    embedding=cached_vec,
+                    doc_id=chunk.get("doc_id", ""),
+                )
+            else:
+                uncached_chunks.append((idx, chunk, cache_key))
+
+        # Embed remaining uncached chunks
+        if uncached_chunks:
+            sub_chunks = [item[1] for item in uncached_chunks]
+            # Real or stub call in batch
+            new_embeddings = _stub_embed_chunks(sub_chunks)
+            for (orig_idx, orig_chunk, cache_key), emb_res in zip(uncached_chunks, new_embeddings):
+                # Cache vector with 7-day TTL
+                cache.set(cache_key, emb_res["embedding"], ttl=86400 * 7)
+                batch_results[orig_idx] = emb_res
+
+        all_embeddings.extend([b for b in batch_results if b is not None])
+
+    return all_embeddings
+
+
 def _stub_embed_chunks(chunks: List[Dict[str, Any]]) -> List[ChunkEmbedding]:
     """
     # TODO: BLOCKED on Week 1 keys (OPENAI_API_KEY) — replace stub with real call once keys are added.

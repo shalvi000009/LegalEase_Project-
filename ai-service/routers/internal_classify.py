@@ -49,8 +49,8 @@ _SAMPLE_DOCS_DIR = Path(__file__).parent.parent / "sample_docs"
 # ---------------------------------------------------------------------------
 
 class ClassifyRequest(BaseModel):
-    doc_id: Optional[str] = Field(
-        None,
+    doc_id: str = Field(
+        ...,
         description="Unique document identifier (UUID). Populated automatically from document_id if needed."
     )
     s3_key: Optional[str] = Field(
@@ -68,6 +68,8 @@ class ClassifyRequest(BaseModel):
             # Support document_id sent by Shalvi's worker
             if "document_id" in data and "doc_id" not in data:
                 data["doc_id"] = data["document_id"]
+            if "doc_id" in data and not isinstance(data["doc_id"], str):
+                raise ValueError("doc_id must be a string")
         return data
 
 

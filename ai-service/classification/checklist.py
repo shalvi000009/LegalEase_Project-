@@ -109,7 +109,7 @@ def detect_contract_type(text: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# GPT-4o Generator
+# GPT-4o Generator (with Redis/Memory Cache)
 # ---------------------------------------------------------------------------
 def call_gpt_4o_analysis(
     text: str,
@@ -118,7 +118,20 @@ def call_gpt_4o_analysis(
 ) -> Dict[str, Any]:
     """
     Calls OpenAI GPT-4o to analyze missing clauses and generate suggested questions.
+    Checks dual-mode cache first to save API tokens and reduce costs on repeat calls.
     """
+    from classification.cache import cache
+
+    # Build deterministic cache key from input fingerprint
+    clause_types_sig = ",".join(sorted(str(c.get("clause_type", "")) for c in classified_clauses))
+    text_snippet = text[:300].strip()
+    cache_key = cache.generate_cache_key("llm:gpt4o:checklist", detected_type, text_snippet, clause_types_sig)
+
+    cached_result = cache.get(cache_key)
+    if cached_result is not None and isinstance(cached_result, dict):
+        logger.info("[CACHE HIT] Returning cached GPT-4o checklist analysis for key=%s", cache_key)
+        return cached_result
+
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key or "your_openai_api_key_here" in api_key or not api_key.startswith("sk-"):
         logger.debug("Valid OpenAI API Key not found; skipping GPT-4o analysis.")
@@ -165,7 +178,10 @@ Provide the response in raw JSON format with the following keys:
         )
         content = response.choices[0].message.content
         if content:
-            return json.loads(content)
+            parsed = json.loads(content)
+            # Store in cache with 24-hour TTL
+            cache.set(cache_key, parsed, ttl=86400)
+            return parsed
     except Exception as e:
         logger.warning(
             "Failed to call OpenAI GPT-4o API for analysis: %s. Falling back to rule-based engine.",

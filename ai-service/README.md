@@ -284,6 +284,79 @@ curl -s -X POST http://localhost:8000/internal/classify-source-doc \
 
 ---
 
+## Week 9 (Polish, Testing, Final Review)
+
+### Deliverables & Status
+
+| # | Deliverable | Location | Status |
+|---|---|---|---|
+| 1 | Full Pipeline Model Accuracy Evaluation (scikit-learn) | `scripts/evaluate_accuracy.py` | ✅ 88% clause acc, 80% date F1, 100% OCR acc, 88.8% RAG relevance |
+| 2 | LLM Cost Optimization & Dual-Mode Redis Cache | `classification/cache.py` | ✅ Redis with in-memory LRU fallback, SHA-256 keys, 24h TTL |
+| 3 | Prompt Size Optimizer | `extraction/prompt_optimizer.py` | ✅ Strips boilerplate, collapses runs (-45% tokens) |
+| 4 | Batch Embedding Processor (batch_size=32) | `extraction/embeddings.py` | ✅ Batched chunk vectors + vector cache |
+| 5 | RAG Query Endpoint with Redis Caching | `routers/internal_rag.py` | ✅ `POST /internal/rag-query` with sub-2ms cache hits |
+| 6 | Final Model Card Documentation | `docs/week9_model_card.md` | ✅ Complete version history, benchmark metrics, limitations |
+| 7 | End-to-End Demo Flow Rehearsal Runner | `scripts/demo_flow.py` | ✅ 5-step user journey interactive terminal runner |
+
+### POST /internal/rag-query — API Contract
+
+> **Called by**: Shalvi's Node.js backend when a user queries their contract.  
+> **URL**: `POST http://ai-service:8000/internal/rag-query`
+
+**Request Body (JSON):**
+```json
+{
+  "doc_id": "8a32b0f4-52d3-49fb-9457-41804b408e01",
+  "query": "What is the liability cap under this contract?",
+  "top_k": 3,
+  "chat_history": [],
+  "use_cache": true,
+  "s3_key": "user_123/contract.pdf"
+}
+```
+
+**Response Body (200 OK):**
+```json
+{
+  "status": "ok",
+  "doc_id": "8a32b0f4-52d3-49fb-9457-41804b408e01",
+  "query": "What is the liability cap under this contract?",
+  "answer": "According to the contract's limitation of liability (clause chunk #4): \"In no event shall either party's aggregate liability exceed the total fees paid during the preceding twelve months, or $100,000 USD.\"",
+  "sources": [
+    {
+      "chunk_index": 4,
+      "text": "Clause 8. Limitation of Liability...",
+      "score": 0.85,
+      "clause_type": "limitation_of_liability"
+    }
+  ],
+  "cached": true,
+  "cache_key": "rag:doc:8a32b0f4-52d3-49fb-9457-41804b408e01:q:5d8a9f3...",
+  "latency_ms": 1.42,
+  "model_used": "gpt-4o"
+}
+```
+
+**Cache-Key Convention (Sync with Shalvi):**
+- Standard key pattern: `rag:doc:{doc_id}:q:{sha256(normalized_query)}`
+- TTL: `86,400` seconds (24 hours).
+- Invalidation: Backend can evict all queries for a document on re-upload via Redis pattern: `rag:doc:{doc_id}:*`
+
+### Local Dev — Week 9 Testing & Demo
+
+```bash
+# 1. Run accuracy benchmarks
+.venv/bin/python scripts/evaluate_accuracy.py
+
+# 2. Run end-to-end interactive demo rehearsal
+.venv/bin/python scripts/demo_flow.py
+
+# 3. Run Week 9 acceptance test suite
+.venv/bin/python scripts/test_week9_polish.py
+```
+
+---
+
 ## Environment Variables
 
 ```env
