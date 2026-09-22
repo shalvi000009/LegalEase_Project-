@@ -7,3 +7,5 @@ package-lock.json
 venv/
 ai-service/venv/
 backend/dist/
+# Frontend build output
+frontend/dist/
