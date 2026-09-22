@@ -357,6 +357,36 @@ curl -s -X POST http://localhost:8000/internal/classify-source-doc \
 
 ---
 
+## Week 10 (Multi-Dimensional Risk Analysis)
+
+Post-submission enhancement extending the classification pipeline to score contracts across 5 distinct risk dimensions: `financial`, `legal`, `privacy`, `employment`, and `litigation`.
+
+### Deliverables
+
+| # | Deliverable | File | Status |
+|---|---|---|---|
+| 1 | Dimension mapping & aggregation engine | `classification/dimension_scoring.py` | ✅ Fully functional |
+| 2 | Additive multi-dimensional endpoints | `routers/internal_classify.py` | ✅ Fully functional |
+| 3 | Multi-contract test fixtures | `scripts/generate_sample_docs.py` | ✅ Added `sample_employment.pdf` |
+| 4 | Dimension specification for Shalvi & Krina | `../docs/week10_dimension_spec.md` | ✅ Published |
+| 5 | Week 10 Acceptance Test Suite | `scripts/test_week10_dimensions.py` | ✅ 100% Pass |
+
+### Shared Dimension Weights & Mapping
+
+- **Weights:** Legal: 30%, Financial: 25%, Litigation: 20%, Privacy: 15%, Employment: 10%
+- **Aggregation Formula:** $\text{score}_d = \mathrm{round}(0.6 \times \mathrm{mean}(S_d) + 0.4 \times \max(S_d))$
+- **Response Extensions:**
+  - Contract level: `risk_dimensions: { financial, legal, privacy, employment, litigation }`, `weighted_risk_score`, `dimension_explanations`.
+  - Clause level: `dimensions: string[]`, `dimension_scores: { [dim]: score }`, `dimension_contributions: { [dim]: score }`.
+
+### Local Dev — Week 10 Testing
+
+```bash
+.venv/bin/python scripts/test_week10_dimensions.py
+```
+
+---
+
 ## Environment Variables
 
 ```env

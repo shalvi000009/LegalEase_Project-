@@ -73,6 +73,12 @@ class ClassifyRequest(BaseModel):
         return data
 
 
+from classification.dimension_scoring import (
+    aggregate_dimension_scores,
+    map_clause_dimensions,
+)
+
+
 class ClauseResponseModel(BaseModel):
     chunk_index: int
     text: str
@@ -81,6 +87,19 @@ class ClauseResponseModel(BaseModel):
     risk_score: int
     risk_level: str
     matching_rules: List[str]
+    # Week 10 additions
+    dimensions: List[str] = Field(
+        default_factory=list,
+        description="Risk dimensions this clause maps to (e.g. ['financial', 'legal']).",
+    )
+    dimension_scores: Dict[str, int] = Field(
+        default_factory=dict,
+        description="Per-dimension risk score contribution for this clause.",
+    )
+    dimension_contributions: Dict[str, int] = Field(
+        default_factory=dict,
+        description="Alias for Shalvi's migration mapping.",
+    )
 
 
 class ClassifyResponse(BaseModel):
@@ -96,6 +115,19 @@ class ClassifyResponse(BaseModel):
     suggested_questions: List[str]
     # Week 8 additions
     model_version: str = CURRENT_MODEL_VERSION
+    # Week 10 additions
+    risk_dimensions: Dict[str, int] = Field(
+        default_factory=dict,
+        description="Aggregated risk scores (0-100) across the 5 dimensions.",
+    )
+    weighted_risk_score: Optional[int] = Field(
+        None,
+        description="Weighted combined risk score across all 5 dimensions.",
+    )
+    dimension_explanations: Optional[Dict[str, Any]] = Field(
+        None,
+        description="List of top contributing clauses per dimension for explainability.",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -235,6 +267,9 @@ async def classify_document_handler(request: ClassifyRequest) -> ClassifyRespons
         risk_level = risk_result["risk_level"]
         matching_rules = risk_result["matching_rules"]
 
+        # Week 10: Multi-dimensional risk mapping
+        target_dims, dim_scores = map_clause_dimensions(clause_type, risk_score, confidence)
+
         clauses.append(
             ClauseResponseModel(
                 chunk_index=chunk_index,
@@ -244,6 +279,9 @@ async def classify_document_handler(request: ClassifyRequest) -> ClassifyRespons
                 risk_score=risk_score,
                 risk_level=risk_level,
                 matching_rules=matching_rules,
+                dimensions=target_dims,
+                dimension_scores=dim_scores,
+                dimension_contributions=dim_scores,
             )
         )
 
@@ -251,6 +289,12 @@ async def classify_document_handler(request: ClassifyRequest) -> ClassifyRespons
     overall_score, overall_level = risk_engine.calculate_overall_risk(
         [c.dict() for c in clauses]
     )
+
+    # Week 10: Aggregate per-contract dimension scores & explanations
+    dim_agg = aggregate_dimension_scores([c.dict() for c in clauses])
+    risk_dimensions = dim_agg["risk_dimensions"]
+    weighted_risk_score = dim_agg["weighted_risk_score"]
+    dimension_explanations = dim_agg["dimension_explanations"]
 
     # Determine classifier method reporting
     method_str = ", ".join(sorted(classifier_methods_used))
@@ -264,7 +308,8 @@ async def classify_document_handler(request: ClassifyRequest) -> ClassifyRespons
     logger.info(
         "Classification complete for doc_id='%s': %d clauses classified, "
         "overall_score=%d, overall_level='%s', method='%s', ocr_used=%s, "
-        "missing_clauses_count=%d, suggested_questions_count=%d",
+        "missing_clauses_count=%d, suggested_questions_count=%d, "
+        "risk_dimensions=%s, weighted_risk_score=%d",
         doc_id,
         len(clauses),
         overall_score,
@@ -273,6 +318,8 @@ async def classify_document_handler(request: ClassifyRequest) -> ClassifyRespons
         ocr_used,
         len(missing_clauses),
         len(suggested_questions),
+        risk_dimensions,
+        weighted_risk_score,
     )
 
     return ClassifyResponse(
@@ -286,6 +333,9 @@ async def classify_document_handler(request: ClassifyRequest) -> ClassifyRespons
         missing_clauses=missing_clauses,
         suggested_questions=suggested_questions,
         model_version=CURRENT_MODEL_VERSION,
+        risk_dimensions=risk_dimensions,
+        weighted_risk_score=weighted_risk_score,
+        dimension_explanations=dimension_explanations,
     )
 
 

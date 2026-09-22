@@ -161,8 +161,58 @@ def create_sample_scanned_image() -> Path:
     return img_path
 
 
+# ---------------------------------------------------------------------------
+# 3. Generate a synthetic employment agreement PDF using PyMuPDF
+# ---------------------------------------------------------------------------
+def create_sample_employment_pdf() -> Path:
+    import fitz  # type: ignore[import-untyped]
+
+    pdf_path = SAMPLE_DIR / "sample_employment.pdf"
+    if pdf_path.exists():
+        print(f"[skip] {pdf_path} already exists.")
+        return pdf_path
+
+    doc = fitz.open()
+    pages_content = [
+        (
+            "EXECUTIVE EMPLOYMENT AGREEMENT\n\n"
+            "This Employment Agreement is entered into on June 1, 2026, by and between "
+            "Enterprise Dynamics Inc. ('Employer') and Alex Mercer ('Executive').\n\n"
+            "1. POSITION AND COMPENSATION\nExecutive shall serve as Chief Information Security Officer. "
+            "Employer shall pay Executive a base salary of $250,000 per annum, paid bi-weekly, plus performance bonuses.\n\n"
+            "2. NON-COMPETE AND NON-SOLICITATION\nDuring the term of employment and for twenty-four (24) months "
+            "following termination, Executive shall not engage in, perform services for, or establish any business "
+            "that directly competes with Employer in North America. Executive shall not solicit employees or clients.\n\n"
+            "3. CONFIDENTIALITY AND DATA PRIVACY\nExecutive acknowledges access to proprietary algorithms and "
+            "confidential consumer data. Executive agrees never to disclose, transfer, or commercialize any "
+            "confidential data or customer personal identifiable information."
+        ),
+        (
+            "4. TERMINATION AND SEVERANCE\nEither party may terminate this Agreement without cause upon 60 days "
+            "written notice. Upon involuntary termination without cause, Executive is entitled to six months severance pay.\n\n"
+            "5. INDEMNIFICATION AND LIABILITY\nEmployer shall indemnify and hold harmless Executive against liabilities "
+            "arising from actions performed in good faith within the scope of employment, subject to standard limits.\n\n"
+            "6. DISPUTE RESOLUTION AND ARBITRATION\nAny controversy or claim arising out of this Agreement shall be "
+            "settled by binding arbitration in accordance with the Commercial Arbitration Rules of the AAA.\n\n"
+            "7. GOVERNING LAW\nThis Agreement is governed by the laws of the State of California.\n\n"
+            "IN WITNESS WHEREOF, the parties hereto have duly executed this Agreement as of the Effective Date."
+        ),
+    ]
+
+    for page_text in pages_content:
+        page = doc.new_page(width=595, height=842)
+        page.insert_text((50, 70), page_text, fontsize=11, fontname="helv")
+
+    doc.save(str(pdf_path))
+    doc.close()
+    print(f"[created] {pdf_path}")
+    return pdf_path
+
+
 if __name__ == "__main__":
     print("Generating sample docs for local development...")
     create_sample_pdf()
     create_sample_scanned_image()
+    create_sample_employment_pdf()
     print("Done. Files in:", SAMPLE_DIR)
+
