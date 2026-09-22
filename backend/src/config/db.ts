@@ -67,9 +67,15 @@ class MockPrisma {
         s3_key: data.s3_key,
         status: data.status || "uploaded",
         created_at: new Date(),
+        isShared: false,
+        shareToken: null,
+        sharedAt: null,
       };
       this.documents.push(doc);
       return doc;
+    },
+    findUnique: async ({ where }: any) => {
+      return this.documents.find(d => d.id === where.id || d.shareToken === where.shareToken) || null;
     },
     findFirst: async ({ where }: any) => {
       return this.documents.find(d => d.id === where.id && d.user_id === where.user_id) || null;

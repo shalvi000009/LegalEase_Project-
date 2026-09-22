@@ -28,10 +28,12 @@ app.use(
   })
 );
 
-// CORS configuration scoped to configured origins (supporting comma-separated environment values)
+// CORS configuration scoped to configured origins (supporting localhost:5173, localhost:3000, and CORS_ORIGIN)
 const corsOriginEnv = process.env.CORS_ORIGIN || "http://localhost:5173,http://localhost:3000";
-const corsOrigin = corsOriginEnv.includes(",") ? corsOriginEnv.split(",") : corsOriginEnv;
-app.use(cors({ origin: corsOrigin }));
+const corsOrigin = corsOriginEnv.includes(",")
+  ? corsOriginEnv.split(",")
+  : [corsOriginEnv, "http://localhost:5173", "http://localhost:3000"];
+app.use(cors({ origin: corsOrigin, credentials: true }));
 
 app.use(express.json());
 
