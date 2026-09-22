@@ -54,6 +54,11 @@ from routers.internal_dates import router as dates_router  # noqa: E402
 app.include_router(dates_router)
 logger.info("Registered router: /internal/extract-dates")
 
+# Week 7: Source document classification and deduplication router
+from routers.internal_source_doc import router as source_doc_router  # noqa: E402
+app.include_router(source_doc_router)
+logger.info("Registered router: /internal/classify-source-doc")
+
 
 # ---------------------------------------------------------------------------
 # Week 1: Health check

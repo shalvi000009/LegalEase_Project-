@@ -130,6 +130,84 @@ curl -s -X POST http://localhost:8000/internal/extract \
 
 ---
 
+## Week 7 (Multi-Channel Notifications: Source Doc Classifier & Deduplication)
+
+### Deliverables
+
+| # | Deliverable | File | Status |
+|---|---|---|---|
+| 1 | Fast legal document classifier (~50ms SLA) scoring 0–1 | `classification/document_classifier.py` | ✅ Fully functional |
+| 2 | Three-tier threshold logic (>0.75 auto-proceed, 0.5–0.75 queued, <0.5 ignored) | `classification/document_classifier.py` | ✅ Fully functional |
+| 3 | SHA-256 deduplication check against user vault | `classification/dedup.py` | ✅ Fully functional |
+| 4 | `POST /internal/classify-source-doc` route | `routers/internal_source_doc.py` | ✅ Route live |
+
+### Threshold Business Rules
+
+| Score Range | Action / Decision | Action Taken by Shalvi's Worker |
+|---|---|---|
+| **> 0.75** | `auto_proceed` | Automatically ingested into S3 & queued for full extraction and analysis |
+| **0.50 – 0.75** | `queued_for_confirmation` | Saved as `pending_confirmation`; sends multi-channel notification to user |
+| **< 0.50** | `silently_ignored` | Silently dropped without notifying user |
+| *Duplicate* | `silently_ignored` | Silently dropped if SHA-256 collision detected (`is_duplicate = true`) |
+
+### POST /internal/classify-source-doc — API Contract
+
+> **Called by**: Shalvi's Week 8 Gmail/Google Drive auto-scan worker  
+> **URL**: `POST http://ai-service:8000/internal/classify-source-doc`
+
+**Request body (JSON):**
+```json
+{
+  "file_bytes_or_url": "data:application/pdf;base64,JVBERi0xLjQK...",
+  "filename": "vendor_agreement.pdf",
+  "user_id": "usr_123",
+  "existing_hashes": ["e2f6688eb10ba14d4b543e08a9cafe55122fb1b8bd04a443f2267f937a1bb9ba"]
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "status": "ok",
+  "is_legal_doc_score": 0.925,
+  "sha256": "e2f6688eb10ba14d4b543e08a9cafe55122fb1b8bd04a443f2267f937a1bb9ba",
+  "action": "auto_proceed",
+  "decision": "auto_proceed",
+  "threshold_bucket": "high",
+  "is_duplicate": false,
+  "duplicate_of": null,
+  "inference_time_ms": 1.45,
+  "classifier_method": "tfidf-fast",
+  "extracted_chars": 1598,
+  "page_count": 2,
+  "details": {
+    "confidence": 0.925,
+    "recommendation": "Contract detected with high confidence (>0.75). Auto-proceeding to deep analysis.",
+    "key_indicators_found": [
+      "contract_title_or_header",
+      "preamble_parties_and_recitals",
+      "operative_legal_clauses_4",
+      "execution_signature_block"
+    ],
+    "negative_indicators_found": []
+  }
+}
+```
+
+### Local Dev — Week 7 Testing
+
+```bash
+# Run Week 7 acceptance test suite
+.venv/bin/python scripts/test_week7_source_doc_classifier.py
+
+# Test the route manually
+curl -s -X POST http://localhost:8000/internal/classify-source-doc \
+  -H "Content-Type: application/json" \
+  -d '{"file_bytes_or_url":"sample_contract.pdf","existing_hashes":[]}' | python3 -m json.tool
+```
+
+---
+
 ## Environment Variables
 
 ```env
