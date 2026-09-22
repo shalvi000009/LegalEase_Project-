@@ -1,6 +1,11 @@
 import { Worker, Job } from "bullmq";
 import { connectionOptions } from "../config/queue";
 import { prisma } from "../config/db";
+import {
+  calculateClauseDimensionContributions,
+  calculateAggregatedRiskDimensions,
+  calculateWeightedOverallRiskScore,
+} from "../config/riskWeights";
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
 
@@ -101,25 +106,39 @@ export const startAnalysisWorker = (): Worker => {
           ];
         }
 
+        // TODO: Switch to Rishi's live per-clause dimension_scores when AI service endpoint is confirmed
+        const preparedClauses = clauses.map((c: any) => {
+          const contribs = c.dimension_scores || calculateClauseDimensionContributions(c.clause_type, c.risk_score);
+          return {
+            ...c,
+            dimension_contributions: contribs,
+          };
+        });
+
+        const riskDimensions = calculateAggregatedRiskDimensions(preparedClauses);
+        const weightedOverallScore = calculateWeightedOverallRiskScore(riskDimensions);
+
         // Store analysis
         const analysis = await prisma.analysis.create({
           data: {
             document_id: documentId,
-            overall_risk_score: overallScore,
+            overall_risk_score: weightedOverallScore || overallScore,
             model_version: modelVersion,
+            risk_dimensions: riskDimensions as any,
           },
         });
 
         // Store clauses
-        if (clauses.length > 0) {
+        if (preparedClauses.length > 0) {
           await prisma.clause.createMany({
-            data: clauses.map((c: any) => ({
+            data: preparedClauses.map((c: any) => ({
               analysis_id: analysis.id,
               clause_type: c.clause_type,
               risk_level: c.risk_level,
               explanation: c.explanation,
               original_text: c.original_text,
               risk_score: c.risk_score,
+              dimension_contributions: c.dimension_contributions as any,
             })),
           });
         }

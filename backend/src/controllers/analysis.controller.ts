@@ -2,6 +2,10 @@ import { Request, Response, NextFunction } from "express";
 import { prisma } from "../config/db";
 import { BadRequestError, NotFoundError } from "../utils/errors";
 import { AuthenticatedRequest } from "../middleware/auth";
+import {
+  calculateAggregatedRiskDimensions,
+  calculateClauseDimensionContributions,
+} from "../config/riskWeights";
 
 export class AnalysisController {
   public static async getAnalysis(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -52,21 +56,34 @@ export class AnalysisController {
         return;
       }
 
-      // 3. Return the overall score and the extracted clauses list
-      res.status(200).json({
-        document_id: documentId,
-        status: document.status,
-        overall_risk_score: analysis.overall_risk_score,
-        model_version: analysis.model_version,
-        created_at: analysis.created_at,
-        clauses: analysis.clauses.map((c: any) => ({
+      const formattedClauses = analysis.clauses.map((c: any) => {
+        const dimensionContribs =
+          c.dimension_contributions ||
+          calculateClauseDimensionContributions(c.clause_type, c.risk_score);
+        return {
           id: c.id,
           clause_type: c.clause_type,
           risk_level: c.risk_level,
           explanation: c.explanation,
           original_text: c.original_text,
           risk_score: c.risk_score,
-        })),
+          dimension_contributions: dimensionContribs,
+        };
+      });
+
+      const riskDimensions =
+        analysis.risk_dimensions ||
+        calculateAggregatedRiskDimensions(formattedClauses);
+
+      // 3. Return the overall score, risk_dimensions, and the extracted clauses list
+      res.status(200).json({
+        document_id: documentId,
+        status: document.status,
+        overall_risk_score: analysis.overall_risk_score,
+        model_version: analysis.model_version,
+        risk_dimensions: riskDimensions,
+        created_at: analysis.created_at,
+        clauses: formattedClauses,
       });
     } catch (error) {
       next(error);

@@ -86,6 +86,7 @@ model Analysis {
   document_id        String     @map("document_id") @db.Uuid
   overall_risk_score Int        @map("overall_risk_score")
   model_version      String     @map("model_version")
+  risk_dimensions    Json?      @map("risk_dimensions")
   created_at         DateTime   @default(now()) @map("created_at")
 
   document           Document   @relation(fields: [document_id], references: [id], onDelete: Cascade)
@@ -95,13 +96,14 @@ model Analysis {
 }
 
 model Clause {
-  id             String       @id @default(uuid()) @db.Uuid
-  analysis_id    String       @map("analysis_id") @db.Uuid
-  clause_type    ClauseType   @map("clause_type")
-  risk_level     RiskLevel    @map("risk_level")
-  explanation    String       @db.Text
-  original_text  String       @map("original_text") @db.Text
-  risk_score     Int          @map("risk_score")
+  id                      String       @id @default(uuid()) @db.Uuid
+  analysis_id             String       @map("analysis_id") @db.Uuid
+  clause_type             ClauseType   @map("clause_type")
+  risk_level              RiskLevel    @map("risk_level")
+  explanation             String       @db.Text
+  original_text           String       @map("original_text") @db.Text
+  risk_score              Int          @map("risk_score")
+  dimension_contributions Json?        @map("dimension_contributions")
 
   analysis       Analysis     @relation(fields: [analysis_id], references: [id], onDelete: Cascade)
   contract_dates ContractDate[]

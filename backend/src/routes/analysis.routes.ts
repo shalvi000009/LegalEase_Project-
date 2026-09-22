@@ -43,6 +43,24 @@ const router = Router();
  *                 model_version:
  *                   type: string
  *                   example: "legal-bert-v1.0.0"
+ *                 risk_dimensions:
+ *                   type: object
+ *                   properties:
+ *                     financial:
+ *                       type: integer
+ *                       example: 80
+ *                     legal:
+ *                       type: integer
+ *                       example: 75
+ *                     privacy:
+ *                       type: integer
+ *                       example: 60
+ *                     employment:
+ *                       type: integer
+ *                       example: 40
+ *                     litigation:
+ *                       type: integer
+ *                       example: 70
  *                 created_at:
  *                   type: string
  *                   format: date-time
