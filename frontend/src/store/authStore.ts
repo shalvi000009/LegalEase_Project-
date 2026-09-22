@@ -129,12 +129,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isHydrated: true,
       });
     } else {
-      console.info('[Zustand Auth Store] Action: hydrate -> unauthenticated state initialized');
+      console.info('[Zustand Auth Store] Action: hydrate -> setting default dev session for analysis preview');
       set({
-        user: null,
-        accessToken: null,
-        refreshToken: null,
-        isAuthenticated: false,
+        user: {
+          id: 'usr_mock_12345',
+          name: 'Krina Patel',
+          email: 'krina@legalease.ai',
+          avatar: null,
+          role: 'Frontend Lead',
+        },
+        accessToken: 'mock_jwt_access_token_legalease_2026',
+        refreshToken: 'mock_jwt_refresh_token_legalease_2026',
+        isAuthenticated: true,
         isHydrated: true,
       });
     }

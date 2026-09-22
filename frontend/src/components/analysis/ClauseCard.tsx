@@ -26,9 +26,23 @@ import {
   Flag,
   Check,
 } from 'lucide-react';
-import { Clause, ClauseType } from '../../types/analysis';
+import {
+  Clause,
+  ClauseType,
+  RiskDimensionKey,
+  DIMENSION_LABELS,
+  getDimensionsForClauseType,
+} from '../../types/analysis';
 import { RiskBadge } from './RiskBadge';
 import { Button } from '../ui/Button';
+
+const DIMENSION_BADGE_STYLES: Record<RiskDimensionKey, string> = {
+  financial: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+  legal: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
+  privacy: 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800',
+  employment: 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+  litigation: 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800',
+};
 
 export interface ClauseCardProps {
   clause: Clause;
@@ -94,6 +108,7 @@ export const ClauseCard: React.FC<ClauseCardProps> = ({
 
   const IconComponent = getClauseIcon(clause.clause_type);
   const title = formatClauseTitle(clause.clause_type);
+  const dimensions = getDimensionsForClauseType(clause.clause_type);
 
   // Left Border Styling based on Risk Level
   let borderLeftColor = 'border-l-emerald-500';
@@ -165,6 +180,21 @@ export const ClauseCard: React.FC<ClauseCardProps> = ({
           )}
           <RiskBadge level={clause.risk_level} showScore={clause.risk_score} size="sm" />
         </div>
+      </div>
+
+      {/* Risk Dimension Badges */}
+      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+          Dimensions:
+        </span>
+        {dimensions.map((dim) => (
+          <span
+            key={dim}
+            className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border shadow-2xs ${DIMENSION_BADGE_STYLES[dim]}`}
+          >
+            {DIMENSION_LABELS[dim]}
+          </span>
+        ))}
       </div>
 
       {/* Plain English Explanation */}

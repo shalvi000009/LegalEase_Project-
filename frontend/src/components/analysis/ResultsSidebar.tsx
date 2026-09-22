@@ -2,6 +2,8 @@ import React, { useRef, useState } from 'react';
 import { Search, SlidersHorizontal, ArrowUp, FileText } from 'lucide-react';
 import { AnalysisResult, Clause } from '../../types/analysis';
 import { DocumentOverview } from './DocumentOverview';
+import { RiskDimensionChart } from './RiskDimensionChart';
+import { WhyThisScorePanel } from './WhyThisScorePanel';
 import { ClauseFilter } from './ClauseFilter';
 import { ClauseCard } from './ClauseCard';
 import { useClauseFilter } from '../../hooks/useClauseFilter';
@@ -55,6 +57,16 @@ export const ResultsSidebar: React.FC<ResultsSidebarProps> = ({
     >
       {/* Document Overview Metadata Card */}
       <DocumentOverview analysis={analysis} />
+
+      {/* Week 10 Enhancement: 5 Risk Dimensions Radar Chart Visual */}
+      <RiskDimensionChart dimensions={analysis.risk_dimensions} />
+
+      {/* Week 10 Enhancement: Why This Score Panel */}
+      <WhyThisScorePanel
+        clauses={analysis.red_flags || []}
+        riskDimensions={analysis.risk_dimensions}
+        onSelectClause={(clause) => onViewInDocument && onViewInDocument(clause)}
+      />
 
       {/* Search & Filter Controls Header */}
       <div className="space-y-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
