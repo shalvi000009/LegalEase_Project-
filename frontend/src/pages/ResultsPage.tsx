@@ -11,6 +11,7 @@ import { useClauseSort, SortOption } from '../hooks/useClauseSort';
 
 import { ResultsHeader } from '../components/analysis/ResultsHeader';
 import { RiskScoreGauge } from '../components/analysis/RiskScoreGauge';
+import { RiskDimensionsCard } from '../components/analysis/RiskDimensionsCard';
 import { SummaryCard } from '../components/analysis/SummaryCard';
 import { MissingClausesAlert } from '../components/analysis/MissingClausesAlert';
 import { SuggestedQuestions } from '../components/analysis/SuggestedQuestions';
@@ -131,6 +132,9 @@ export const ResultsPage: React.FC = () => {
                 Calculated using LegalEase Legal-BERT NLP engine. Identifies potential legal exposure based on clause severity.
               </p>
             </Card>
+
+            {/* Week 10 Multi-Dimensional Risk Breakdown */}
+            <RiskDimensionsCard riskDimensions={analysis.risk_dimensions} />
 
             {/* AI Summary Card */}
             <SummaryCard analysis={analysis} />

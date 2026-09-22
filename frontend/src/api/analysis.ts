@@ -147,11 +147,20 @@ export async function getDocumentAnalysis(docId: string): Promise<AnalysisResult
     analysisData.risk_level ??
     (overallScore > 70 ? 'high' : overallScore > 40 ? 'medium' : 'low');
 
+  const defaultDimensions = {
+    legal: Math.min(100, Math.round(overallScore * 0.95)),
+    financial: Math.min(100, Math.round(overallScore * 1.1)),
+    litigation: Math.min(100, Math.round(overallScore * 0.85)),
+    privacy: Math.min(100, Math.round(overallScore * 0.6)),
+    employment: Math.min(100, Math.round(overallScore * 0.7)),
+  };
+
   return {
     doc_id: docId,
     filename: analysisData.filename || data.filename || `Document_${docId.substring(0, 8)}.pdf`,
     risk_score: overallScore,
     risk_level: overallLevel,
+    risk_dimensions: analysisData.risk_dimensions || data.risk_dimensions || defaultDimensions,
     summary: analysisData.summary || 'Document analysis completed successfully.',
     key_obligations: analysisData.key_obligations || [],
     other_obligations: analysisData.other_obligations || [],

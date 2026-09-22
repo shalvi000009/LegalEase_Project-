@@ -15,6 +15,7 @@ import { DocumentsListPage } from './pages/DocumentsListPage';
 import { DocumentDetailPage } from './pages/DocumentDetailPage';
 import { ProcessingPage } from './pages/ProcessingPage';
 import { ResultsPage } from './pages/ResultsPage';
+import { ChatPage } from './pages/ChatPage';
 import { VaultPage } from './pages/VaultPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -146,6 +147,22 @@ function AnimatedRoutes() {
             element={
               <ProtectedRoute>
                 <ResultsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/documents/:id/chat"
+            element={
+              <ProtectedRoute>
+                <ChatPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/contracts/:id/chat"
+            element={
+              <ProtectedRoute>
+                <ChatPage />
               </ProtectedRoute>
             }
           />

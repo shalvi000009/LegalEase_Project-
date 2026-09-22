@@ -38,11 +38,21 @@ export interface Clause {
   matching_rules?: string[];
 }
 
+export interface RiskDimensions {
+  financial: number;
+  legal: number;
+  privacy: number;
+  employment: number;
+  litigation: number;
+  [key: string]: number;
+}
+
 export interface AnalysisResult {
   doc_id: string;
   filename?: string;
   risk_score: number; // 0 - 100
   risk_level: RiskLevel;
+  risk_dimensions?: RiskDimensions;
   summary: string;
   key_obligations: string[];
   other_obligations?: string[];
