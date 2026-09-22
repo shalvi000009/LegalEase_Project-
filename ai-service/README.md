@@ -130,6 +130,160 @@ curl -s -X POST http://localhost:8000/internal/extract \
 
 ---
 
+## Week 7 (Multi-Channel Notifications: Source Doc Classifier & Deduplication)
+
+### Deliverables
+
+| # | Deliverable | File | Status |
+|---|---|---|---|
+| 1 | Fast legal document classifier (~50ms SLA) scoring 0–1 | `classification/document_classifier.py` | ✅ Fully functional |
+| 2 | Three-tier threshold logic (>0.75 auto-proceed, 0.5–0.75 queued, <0.5 ignored) | `classification/document_classifier.py` | ✅ Fully functional |
+| 3 | SHA-256 deduplication check against user vault | `classification/dedup.py` | ✅ Fully functional |
+| 4 | `POST /internal/classify-source-doc` route | `routers/internal_source_doc.py` | ✅ Route live |
+
+### Threshold Business Rules
+
+| Score Range | Action / Decision | Action Taken by Shalvi's Worker |
+|---|---|---|
+| **> 0.75** | `auto_proceed` | Automatically ingested into S3 & queued for full extraction and analysis |
+| **0.50 – 0.75** | `queued_for_confirmation` | Saved as `pending_confirmation`; sends multi-channel notification to user |
+| **< 0.50** | `silently_ignored` | Silently dropped without notifying user |
+| *Duplicate* | `silently_ignored` | Silently dropped if SHA-256 collision detected (`is_duplicate = true`) |
+
+### POST /internal/classify-source-doc — API Contract
+
+> **Called by**: Shalvi's Week 8 Gmail/Google Drive auto-scan worker  
+> **URL**: `POST http://ai-service:8000/internal/classify-source-doc`
+
+**Request body (JSON):**
+```json
+{
+  "file_bytes_or_url": "data:application/pdf;base64,JVBERi0xLjQK...",
+  "filename": "vendor_agreement.pdf",
+  "user_id": "usr_123",
+  "existing_hashes": ["e2f6688eb10ba14d4b543e08a9cafe55122fb1b8bd04a443f2267f937a1bb9ba"]
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "status": "ok",
+  "is_legal_doc_score": 0.925,
+  "sha256": "e2f6688eb10ba14d4b543e08a9cafe55122fb1b8bd04a443f2267f937a1bb9ba",
+  "action": "auto_proceed",
+  "decision": "auto_proceed",
+  "threshold_bucket": "high",
+  "is_duplicate": false,
+  "duplicate_of": null,
+  "inference_time_ms": 1.45,
+  "classifier_method": "tfidf-fast",
+  "extracted_chars": 1598,
+  "page_count": 2,
+  "details": {
+    "confidence": 0.925,
+    "recommendation": "Contract detected with high confidence (>0.75). Auto-proceeding to deep analysis.",
+    "key_indicators_found": [
+      "contract_title_or_header",
+      "preamble_parties_and_recitals",
+      "operative_legal_clauses_4",
+      "execution_signature_block"
+    ],
+    "negative_indicators_found": []
+  }
+}
+```
+
+### Local Dev — Week 7 Testing
+
+```bash
+# Run Week 7 acceptance test suite
+.venv/bin/python scripts/test_week7_source_doc_classifier.py
+
+# Test the route manually
+curl -s -X POST http://localhost:8000/internal/classify-source-doc \
+  -H "Content-Type: application/json" \
+  -d '{"file_bytes_or_url":"sample_contract.pdf","existing_hashes":[]}' | python3 -m json.tool
+```
+
+---
+
+## Week 8 (Model Versioning & Weekly Re-Analysis Job)
+
+### Deliverables
+
+| # | Deliverable | File | Status |
+|---|---|---|---|
+| 1 | Model versioning system (`legalease-v1.2.0`) & stale flagging script | `classification/versioning.py`, `scripts/flag_stale_analyses.py` | ✅ Fully functional |
+| 2 | Weekly re-analysis job logic with Token Bucket rate limiting (batches <= 50) | `classification/rate_limiter.py`, `routers/internal_reanalyze.py` | ✅ Fully functional |
+| 3 | Diff detection engine (+/-15 risk shift & newly surfaced red flags) | `classification/diff_detector.py` | ✅ Fully functional |
+| 4 | `POST /internal/reanalyze-batch` & `POST /internal/check-stale` routes | `routers/internal_reanalyze.py` | ✅ Routes live |
+
+### POST /internal/reanalyze-batch — API Contract
+
+> **Called by**: Shalvi's Sunday 2:00 AM BullMQ re-analysis worker  
+> **URL**: `POST http://ai-service:8000/internal/reanalyze-batch`
+
+**Request body (JSON):**
+```json
+{
+  "documents": [
+    {
+      "document_id": "8a32b0f4-52d3-49fb-9457-41804b408e01",
+      "s3_key": "user_1/8a32b0f4/contract.pdf",
+      "previous_analysis": {
+        "overall_risk_score": 40,
+        "model_version": "legal-bert-v1.0.0",
+        "clauses": []
+      }
+    }
+  ],
+  "force_reanalyze": false,
+  "rate_limit_rpm": 60
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "status": "ok",
+  "current_model_version": "legalease-v1.2.0",
+  "total_requested": 1,
+  "total_processed": 1,
+  "total_reanalyzed": 1,
+  "total_skipped": 0,
+  "total_notifications_triggered": 1,
+  "results": [
+    {
+      "document_id": "8a32b0f4-52d3-49fb-9457-41804b408e01",
+      "status": "reanalyzed",
+      "model_version": "legalease-v1.2.0",
+      "diff_detected": true,
+      "notify_user": true,
+      "score_delta": 20,
+      "new_overall_score": 60,
+      "previous_overall_score": 40,
+      "new_red_flags_count": 1,
+      "reasons": [
+        "Overall contract risk score shifted significantly by +20 points (from 40 to 60)."
+      ]
+    }
+  ]
+}
+```
+
+### Local Dev — Week 8 Testing
+
+```bash
+# Run Week 8 acceptance test suite
+.venv/bin/python scripts/test_week8_reanalysis.py
+
+# Run stale flagging CLI script
+.venv/bin/python scripts/flag_stale_analyses.py
+```
+
+---
+
 ## Environment Variables
 
 ```env
