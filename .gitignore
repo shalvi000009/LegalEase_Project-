@@ -1,11 +1,16 @@
 .venv/
+venv/
+ai-service/venv/
 __pycache__/
 *.pyc
+.ipynb_checkpoints/
+.pytest_cache/
 .env
 node_modules/
 package-lock.json
-venv/
-ai-service/venv/
+dist/
 backend/dist/
 # Frontend build output
 frontend/dist/
+*.log
+.DS_Store

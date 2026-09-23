@@ -39,3 +39,15 @@ export interface DocumentStatusResponse {
   progress?: number;
   riskScore?: number | null;
 }
+
+export interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface PaginatedResponse<T> {
+  documents: T[];
+  pagination: PaginationMeta;
+}

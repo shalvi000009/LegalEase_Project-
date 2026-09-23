@@ -30,6 +30,12 @@ export class UnauthorizedError extends AppError {
   }
 }
 
+export class InvalidCredentialsError extends AppError {
+  constructor(message: string = "Invalid email or password", details?: any) {
+    super(message, 401, "INVALID_CREDENTIALS", details);
+  }
+}
+
 export class ConflictError extends AppError {
   constructor(message: string, details?: any) {
     super(message, 409, "CONFLICT", details);

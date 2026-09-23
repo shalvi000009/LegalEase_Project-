@@ -15,6 +15,8 @@ model User {
   created_at    DateTime       @default(now()) @map("created_at")
   refresh_tokens RefreshToken[]
   documents     Document[]
+  reminders     Reminder[]
+  notification_preference NotificationPreferences?
 
   @@map("users")
 }
@@ -50,8 +52,10 @@ model Document {
   shareToken String?        @unique @map("share_token")
   sharedAt   DateTime?      @map("shared_at")
 
-  user       User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  analyses   Analysis[]
+  user          User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  analyses      Analysis[]
+  chat_sessions ChatSession[]
+  contract_dates ContractDate[]
 
   @@map("documents")
 }
@@ -100,6 +104,109 @@ model Clause {
   risk_score     Int          @map("risk_score")
 
   analysis       Analysis     @relation(fields: [analysis_id], references: [id], onDelete: Cascade)
+  contract_dates ContractDate[]
 
   @@map("clauses")
+}
+
+model ChatSession {
+  id          String    @id @default(uuid()) @db.Uuid
+  document_id String    @map("document_id") @db.Uuid
+  created_at  DateTime  @default(now()) @map("created_at")
+
+  document    Document  @relation(fields: [document_id], references: [id], onDelete: Cascade)
+  messages    Message[]
+
+  @@map("chat_sessions")
+}
+
+model Message {
+  id              String      @id @default(uuid()) @db.Uuid
+  chat_session_id String      @map("chat_session_id") @db.Uuid
+  sender          String      // "user" | "ai"
+  content         String      @db.Text
+  created_at      DateTime    @default(now()) @map("created_at")
+
+  chat_session    ChatSession @relation(fields: [chat_session_id], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+}
+
+enum DateType {
+  expiry_date
+  renewal_date
+  notice_deadline
+  payment_due
+  probation_end
+  lock_in_end
+  other
+}
+
+enum ReminderStatus {
+  pending
+  sent
+  snoozed
+  resolved
+  failed
+}
+
+enum ReminderChannel {
+  email
+  push
+  sms
+}
+
+model ContractDate {
+  id             String     @id @default(uuid()) @db.Uuid
+  doc_id         String     @map("doc_id") @db.Uuid
+  date_type      DateType   @map("date_type")
+  raw_text       String     @map("raw_text")
+  resolved_date  DateTime   @map("resolved_date")
+  confidence     Float
+  clause_id      String?    @map("clause_id") @db.Uuid
+  user_confirmed Boolean    @default(false) @map("user_confirmed")
+  is_active      Boolean    @default(true) @map("is_active")
+  created_at     DateTime   @default(now()) @map("created_at")
+
+  document  Document   @relation(fields: [doc_id], references: [id], onDelete: Cascade)
+  clause    Clause?    @relation(fields: [clause_id], references: [id], onDelete: SetNull)
+  reminders Reminder[]
+
+  @@map("contract_dates")
+}
+
+model Reminder {
+  id               String          @id @default(uuid()) @db.Uuid
+  user_id          String          @map("user_id") @db.Uuid
+  contract_date_id String          @map("contract_date_id") @db.Uuid
+  days_before      Int             @map("days_before")
+  scheduled_for    DateTime        @map("scheduled_for")
+  status           ReminderStatus  @default(pending)
+  channel          ReminderChannel @default(email)
+  sent_at          DateTime?       @map("sent_at")
+  snoozed_until    DateTime?       @map("snoozed_until")
+  created_at       DateTime        @default(now()) @map("created_at")
+
+  user          User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  contract_date ContractDate @relation(fields: [contract_date_id], references: [id], onDelete: Cascade)
+
+  @@map("reminders")
+}
+
+model NotificationPreferences {
+  id             String   @id @default(uuid()) @db.Uuid
+  user_id        String   @unique @map("user_id") @db.Uuid
+  email_enabled  Boolean  @default(true) @map("email_enabled")
+  push_enabled   Boolean  @default(true) @map("push_enabled")
+  sms_enabled    Boolean  @default(false) @map("sms_enabled")
+  phone_number   String?  @map("phone_number")
+  fcm_token      String?  @map("fcm_token")
+  reminder_days  Int[]    @default([30, 7, 1]) @map("reminder_days")
+  rescan_notify  Boolean  @default(true) @map("rescan_notify")
+  created_at     DateTime @default(now()) @map("created_at")
+  updated_at     DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
 }
