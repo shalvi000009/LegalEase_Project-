@@ -26,6 +26,7 @@ export const ChatPage: React.FC = () => {
   const { data: analysis } = useDocumentAnalysis(docId);
 
   const [messages, setMessages] = useState<Message[]>([]);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [inputMessage, setInputMessage] = useState(initialPrompt);
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -72,51 +73,53 @@ export const ChatPage: React.FC = () => {
     setIsSending(true);
 
     try {
-      // 1. Try backend chat session & message endpoint
-      let sessionData: any = null;
-      try {
-        const sessionRes = await apiClient.post('/chat/sessions', { documentId: docId });
-        sessionData = sessionRes.data?.session;
-      } catch {
-        // Ignore session creation failure
+      // 1. Obtain or create chat session
+      let activeSessionId = sessionId;
+      if (!activeSessionId) {
+        try {
+          const sessionRes = await apiClient.post('/chat/sessions', { documentId: docId });
+          activeSessionId = sessionRes.data?.session?.id || null;
+          if (activeSessionId) {
+            setSessionId(activeSessionId);
+          }
+        } catch {
+          // Ignore session creation failure
+        }
       }
 
-      if (sessionData && sessionData.id) {
-        await apiClient.post(`/chat/sessions/${sessionData.id}/messages`, { content: queryText }).catch(() => {});
+      // 2. Post user message to backend and receive grounded AI answer
+      let aiContent = '';
+      let aiSources: any[] = [];
+
+      if (activeSessionId) {
+        try {
+          const msgRes = await apiClient.post(`/chat/sessions/${activeSessionId}/messages`, { content: queryText });
+          if (msgRes.data?.aiMessage) {
+            aiContent = msgRes.data.aiMessage.content;
+            aiSources = msgRes.data.aiMessage.sources || [];
+          }
+        } catch {
+          // Fallback if network call fails
+        }
       }
 
-      // Generate dynamic domain-specific AI response
-      const promptLower = queryText.toLowerCase().trim();
-      let aiReply = '';
-
-      if (promptLower === 'hello' || promptLower === 'hi' || promptLower === 'hey' || promptLower === 'greetings') {
-        aiReply = `Hello! I am your LegalEase AI Contract Assistant. Ask me any question about your document "${analysis?.filename || 'Contract'}", such as financial risk, liability caps, termination terms, or non-compete clauses!`;
-      } else if (promptLower === 'ok' || promptLower === 'thanks' || promptLower === 'thank you' || promptLower === 'cool') {
-        aiReply = `You're welcome! Feel free to ask any further questions about your contract obligations or risk scores.`;
-      } else if (promptLower.includes('financial') || promptLower.includes('cost') || promptLower.includes('payment') || promptLower.includes('fee') || promptLower.includes('price')) {
-        aiReply = `Financial risk evaluates your monetary exposure under this contract. Key financial considerations include uncapped indemnities, aggressive late payment penalties, automatic renewal price escalations, or unexpected fee commitments. Check the Financial Exposure card on your Results dashboard for detailed scores.`;
-      } else if (promptLower.includes('privacy') || promptLower.includes('data') || promptLower.includes('gdpr') || promptLower.includes('confidential')) {
-        aiReply = `Privacy & Data risk evaluates how sensitive information is protected. Under the confidentiality provisions of this contract, proprietary data must be maintained for 5 years post-termination. Ensure data processing and non-disclosure obligations are strictly bounded.`;
-      } else if (promptLower.includes('employment') || promptLower.includes('non-compete') || promptLower.includes('solicit') || promptLower.includes('probation')) {
-        aiReply = `Employment risk assesses post-termination restrictions. Non-compete clauses that apply worldwide or for indefinite durations are highly restrictive and often legally unenforceable. Ensure non-solicitation and IP assignment terms are limited to working hours and active operational regions.`;
-      } else if (promptLower.includes('litigation') || promptLower.includes('dispute') || promptLower.includes('arbitration') || promptLower.includes('court')) {
-        aiReply = `Litigation risk covers legal venue and dispute resolution terms. This contract specifies mandatory arbitration or exclusive jurisdiction. Review governing law clauses to ensure dispute resolution does not require costly out-of-state travel.`;
-      } else if (promptLower.includes('liability') || promptLower.includes('limit') || promptLower.includes('cap')) {
-        aiReply = `Based on the limitation of liability section in your contract, aggregate liability is capped at total fees paid in the preceding 12 months, with exclusions for breaches of confidentiality and IP rights.`;
-      } else if (promptLower.includes('termination') || promptLower.includes('terminate') || promptLower.includes('notice')) {
-        aiReply = `According to the termination clause, either party may terminate this agreement for convenience upon 30 days prior written notice. Immediate termination is permitted upon 15 days uncured material breach.`;
-      } else if (promptLower.includes('indemnity') || promptLower.includes('indemnification') || promptLower.includes('harmless')) {
-        aiReply = `The indemnification section states that the Provider will defend and hold Customer harmless against third-party IP infringement claims, provided prompt written notice is delivered.`;
-      } else if (promptLower.includes('governing') || promptLower.includes('law') || promptLower.includes('jurisdiction')) {
-        aiReply = `This contract is governed by state laws excluding conflict of laws principles, with exclusive venue in designated state courts.`;
-      } else {
-        aiReply = `Regarding "${queryText}": Based on AI analysis of your document "${analysis?.filename || 'Contract'}", this clause contains standard commercial legal provisions. Inspect the specific clause risk cards on your dashboard for detailed risk levels and matching rules.`;
+      if (!aiContent) {
+        // Fallback response generator if offline or session unavailable
+        const promptLower = queryText.toLowerCase().trim();
+        if (promptLower.length < 2 || /^[\d\W]+$/.test(promptLower)) {
+          aiContent = "Sorry, I am unable to understand your question. Please write again with more details about your contract (e.g., liability cap, termination, financial risk, or confidentiality).";
+        } else if (promptLower === 'hello' || promptLower === 'hi' || promptLower === 'hey') {
+          aiContent = `Hello! I am your LegalEase AI Contract Assistant. Ask me any question about your document "${analysis?.filename || 'Contract'}", such as financial risk, liability caps, termination terms, or non-compete clauses!`;
+        } else {
+          aiContent = `Based on AI analysis of your document "${analysis?.filename || 'Contract'}": I've processed your question regarding "${queryText}". Please check the specific clause breakdown cards on your dashboard for detailed risk scores and legal matching rules.`;
+        }
       }
 
       const aiMsg: Message = {
         id: `msg_ai_${Date.now()}`,
         sender: 'ai',
-        content: aiReply,
+        content: aiContent,
+        sources: aiSources.length > 0 ? aiSources : undefined,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
@@ -125,7 +128,7 @@ export const ChatPage: React.FC = () => {
       const aiMsg: Message = {
         id: `msg_ai_${Date.now()}`,
         sender: 'ai',
-        content: `I've analyzed your question regarding "${queryText}". Please check the specific clause breakdown cards on your dashboard for detailed risk analysis and legal matching rules.`,
+        content: `Sorry, I am unable to understand your question. Please write again with more details about your contract (e.g., liability cap, termination, financial risk, or confidentiality).`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, aiMsg]);

@@ -117,7 +117,7 @@ export class ChatController {
         throw new NotFoundError("Chat session not found or access denied");
       }
 
-      const message = await prisma.message.create({
+      const userMessage = await prisma.message.create({
         data: {
           chat_session_id: sessionId,
           sender: "user",
@@ -125,12 +125,30 @@ export class ChatController {
         },
       });
 
+      // Generate AI answer automatically for non-streaming consumers
+      const responseData = await generateSmartChatAnswer(content.trim(), session.document_id);
+      
+      const aiMessage = await prisma.message.create({
+        data: {
+          chat_session_id: sessionId,
+          sender: "ai",
+          content: responseData.text,
+        },
+      });
+
       res.status(201).json({
         message: {
-          id: message.id,
-          sender: message.sender,
-          content: message.content,
-          created_at: message.created_at,
+          id: userMessage.id,
+          sender: userMessage.sender,
+          content: userMessage.content,
+          created_at: userMessage.created_at,
+        },
+        aiMessage: {
+          id: aiMessage.id,
+          sender: aiMessage.sender,
+          content: aiMessage.content,
+          sources: responseData.sources || [],
+          created_at: aiMessage.created_at,
         },
       });
     } catch (error) {
@@ -202,50 +220,9 @@ export class ChatController {
       // Flush headers
       res.flushHeaders();
 
-      // 2. Select legal-themed response based on keywords & domain context
-      const promptLower = userPrompt.toLowerCase().trim();
-      let aiResponseText = "";
-
-      if (promptLower === "hello" || promptLower === "hi" || promptLower === "hey" || promptLower === "greetings") {
-        aiResponseText = "Hello! I am your LegalEase AI Contract Assistant. Ask me any question about your document, such as financial exposure, liability caps, termination clauses, or non-compete restrictions!";
-      } else if (promptLower === "ok" || promptLower === "thanks" || promptLower === "thank you" || promptLower === "got it" || promptLower === "cool") {
-        aiResponseText = "You're welcome! Feel free to ask any further questions about your contract, risk scores, or specific clauses.";
-      } else if (promptLower.includes("financial") || promptLower.includes("cost") || promptLower.includes("payment") || promptLower.includes("fee") || promptLower.includes("price")) {
-        aiResponseText = "Financial risk evaluates your monetary exposure under this contract. Key financial risks include uncapped indemnities, aggressive late payment penalties, automatic renewal price escalations, or broad operational costs. Check the Financial Exposure section in your Multi-Dimensional Risk breakdown for exact scores.";
-      } else if (promptLower.includes("privacy") || promptLower.includes("data") || promptLower.includes("gdpr") || promptLower.includes("confidential")) {
-        aiResponseText = "Privacy & Data risk evaluates how sensitive information is protected. Under Section 5, confidential information must be maintained for 5 years post-termination. Ensure data processing, GDPR compliance, and non-disclosure obligations are strictly scoped.";
-      } else if (promptLower.includes("employment") || promptLower.includes("non-compete") || promptLower.includes("solicit") || promptLower.includes("probation")) {
-        aiResponseText = "Employment risk assesses post-termination restrictions. Non-compete clauses that apply worldwide or for indefinite durations are highly restrictive and often legally unenforceable. Ensure non-solicitation and IP assignment clauses are limited to working hours and active operational regions.";
-      } else if (promptLower.includes("litigation") || promptLower.includes("dispute") || promptLower.includes("arbitration") || promptLower.includes("court")) {
-        aiResponseText = "Litigation risk covers legal venue and dispute resolution terms. This contract specifies mandatory arbitration or exclusive jurisdiction. Review governing law clauses to ensure dispute resolution does not require costly out-of-state travel.";
-      } else if (promptLower.includes("liability") || promptLower.includes("limit") || promptLower.includes("cap")) {
-        aiResponseText = "Based on Section 8 of the contract, the limitation of liability is capped at the total fees paid by the client in the 12 months preceding the claim. However, there is an exclusion for breaches of confidentiality and intellectual property rights, where liability remains uncapped.";
-      } else if (promptLower.includes("termination") || promptLower.includes("terminate") || promptLower.includes("convenience")) {
-        aiResponseText = "According to Section 11, either party may terminate this agreement for convenience upon 30 days prior written notice. If a party is in material breach, the non-breaching party can terminate immediately if the breach is not cured within 15 days of notice.";
-      } else if (promptLower.includes("indemnity") || promptLower.includes("indemnification") || promptLower.includes("harmless")) {
-        aiResponseText = "The indemnification terms in Section 9 state that the Provider will defend and hold the Customer harmless from any third-party claims alleging that the software infringes any patent, copyright, or trade secret. The Customer must provide prompt written notice of any claim.";
-      } else if (promptLower.includes("governing") || promptLower.includes("law") || promptLower.includes("jurisdiction")) {
-        aiResponseText = "This agreement is governed by the laws of the State of New York, excluding its conflict of laws principles. Any legal actions or proceedings arising under this contract must be brought exclusively in the state or federal courts located in New York County.";
-      } else {
-        aiResponseText = `Regarding your query "${userPrompt}": Based on LegalEase AI contract analysis, this document contains standard commercial provisions. You can check specific clause risk levels and multi-dimensional risk scores in your analysis dashboard.`;
-      }
-
-      // TODO: BLOCKED on Rishi's RAG chain microservice.
-      // Once Rishi's FastAPI streaming RAG endpoint is ready (e.g. POST /api/v1/chat/stream),
-      // replace this mock block with a real HTTP fetch stream proxy:
-      //
-      // const aiServiceUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
-      // const response = await fetch(`${aiServiceUrl}/api/v1/chat/stream`, {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({
-      //     doc_id: session.document_id,
-      //     message: userPrompt,
-      //     history: [] // Add message history here
-      //   })
-      // });
-      // const reader = response.body.getReader();
-      // ... read stream chunks and proxy to client ...
+      // 2. Generate accurate, document-grounded AI response
+      const responseData = await generateSmartChatAnswer(userPrompt, session.document_id);
+      const aiResponseText = responseData.text;
 
       // 3. Stream response tokens (split by space to simulate words/tokens)
       const words = aiResponseText.split(/(\s+)/);
@@ -269,6 +246,7 @@ export class ChatController {
           }
 
           // Send SSE done event and close connection
+          res.write(`data: ${JSON.stringify({ token: "", done: true, sources: responseData.sources || [] })}\n\n`);
           res.write("data: [DONE]\n\n");
           res.end();
           return;
@@ -277,7 +255,7 @@ export class ChatController {
         const token = words[currentIndex];
         res.write(`data: ${JSON.stringify({ token })}\n\n`);
         currentIndex++;
-      }, 50);
+      }, 30);
 
       // Handle client disconnect / closed connection
       req.on("close", () => {
@@ -287,4 +265,164 @@ export class ChatController {
       next(error);
     }
   }
+}
+
+/**
+ * Generates an accurate, grounded AI response for a user query about a specific document.
+ * Includes gibberish/unreadable input detection, typo-tolerant legal term matching,
+ * database clause lookup, and ai-service RAG query integration.
+ */
+export async function generateSmartChatAnswer(userPrompt: string, documentId: string): Promise<{ text: string; sources?: any[] }> {
+  const promptTrimmed = userPrompt.trim();
+  const promptLower = promptTrimmed.toLowerCase();
+
+  // 1. Unreadable / Gibberish detection
+  if (promptTrimmed.length < 2 || /^[\d\W]+$/.test(promptTrimmed)) {
+    return { text: "Sorry, I am unable to understand your question. Please write again with more details about your contract (e.g., liability cap, termination, financial risk, or confidentiality)." };
+  }
+
+  const alphaWords = promptLower.match(/[a-z]{4,}/g) || [];
+  for (const word of alphaWords) {
+    const vowels = word.match(/[aeiouy]/g);
+    if (!vowels || (vowels.length / word.length) < 0.12) {
+      return { text: "Sorry, I am unable to understand your question. Please write again with more details about your contract (e.g., liability cap, termination, financial risk, or confidentiality)." };
+    }
+  }
+
+  // 2. Greetings & Conversational Intents
+  if (["hello", "hi", "hey", "greetings", "good morning", "good evening"].includes(promptLower)) {
+    return { text: "Hello! I am your LegalEase AI Contract Assistant. Ask me any question about your contract, such as financial risk, liability caps, termination terms, or non-compete clauses!" };
+  }
+  if (["ok", "thanks", "thank you", "got it", "cool", "great"].includes(promptLower)) {
+    return { text: "You're welcome! Feel free to ask any further questions about your contract obligations, risk scores, or specific clauses." };
+  }
+
+  // 3. Try calling AI-Service RAG endpoint first
+  try {
+    const aiServiceUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
+    const ragRes = await fetch(`${aiServiceUrl}/internal/rag-query`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        doc_id: documentId,
+        query: userPrompt,
+        top_k: 3,
+      }),
+    });
+
+    if (ragRes.ok) {
+      const data: any = await ragRes.json();
+      if (data && data.answer && !data.answer.includes("not explicitly addressed")) {
+        return {
+          text: data.answer,
+          sources: data.sources || [],
+        };
+      }
+    }
+  } catch (err) {
+    // Continue to database-grounded fallback synthesis
+  }
+
+  // 4. Fetch Document & Analysis from Database
+  let document: any = null;
+  try {
+    document = await prisma.document.findUnique({
+      where: { id: documentId },
+      include: {
+        analyses: {
+          orderBy: { created_at: "desc" },
+          take: 1,
+          include: { clauses: true },
+        },
+      },
+    });
+  } catch (dbErr) {
+    // Ignore DB error if fallback needed
+  }
+
+  const docName = document?.filename || "your uploaded contract";
+  const analysis = document?.analyses?.[0];
+  const clauses: any[] = analysis?.clauses || [];
+
+  // Match legal concepts with typo tolerance
+  const patterns = [
+    {
+      type: "non_compete",
+      regex: /compte|compet|non-?compete|solicit|probation|employment|hiring|restrictive/i,
+      label: "Non-Compete & Employment Restrictions",
+    },
+    {
+      type: "payment",
+      regex: /finac|finans|cost|payment|fee|price|money|expense|penalty|late fee|billing|rate/i,
+      label: "Financial & Payment Terms",
+    },
+    {
+      type: "confidentiality",
+      regex: /privac|privas|confidential|secret|data|gdpr|disclosure|nda|proprietary/i,
+      label: "Privacy & Confidentiality",
+    },
+    {
+      type: "liability",
+      regex: /liab|liable|limit|cap|loss|damage|claim limit/i,
+      label: "Limitation of Liability",
+    },
+    {
+      type: "termination",
+      regex: /terminat|terminte|cancel|notice|breach|cure|exit|expire|renewal/i,
+      label: "Termination & Notice",
+    },
+    {
+      type: "indemnification",
+      regex: /indemn|harm|hold harmless|defend/i,
+      label: "Indemnification",
+    },
+    {
+      type: "governing_law",
+      regex: /govern|jurisdiction|court|venue|state|law/i,
+      label: "Governing Law & Venue",
+    },
+    {
+      type: "intellectual_property",
+      regex: /intellectual|\bip\b|copyright|patent|trademark|ownership/i,
+      label: "Intellectual Property Rights",
+    },
+  ];
+
+  for (const item of patterns) {
+    if (item.regex.test(promptLower)) {
+      const matchingClause = clauses.find(
+        (c: any) => c.clause_type === item.type || c.clause_type?.toLowerCase().includes(item.type)
+      );
+
+      if (matchingClause) {
+        const score = matchingClause.risk_score ?? 50;
+        const level = matchingClause.risk_level ? String(matchingClause.risk_level).toUpperCase() : "MEDIUM";
+        return {
+          text: `Based on AI analysis of your document "${docName}":\n\n📌 Clause Type: ${item.label}\n⚖️ Risk Level: ${level} (Risk Score: ${score}/100)\n\nExplanation: ${matchingClause.explanation}\n\nExact Excerpt: "${matchingClause.original_text.slice(0, 300)}${matchingClause.original_text.length > 300 ? "..." : ""}"`,
+          sources: [
+            {
+              chunk_index: 0,
+              text: matchingClause.original_text,
+              clause_type: item.type,
+            },
+          ],
+        };
+      } else {
+        return {
+          text: `Based on AI analysis of your document "${docName}": No specific ${item.label.toLowerCase()} clause was detected in this contract. Inspect the remaining clause risk cards on your dashboard for full details.`,
+        };
+      }
+    }
+  }
+
+  // 5. Default Domain Fallback for recognized questions
+  if (analysis) {
+    return {
+      text: `Based on AI analysis of "${docName}": The document has an overall risk score of ${analysis.overall_risk_score}/100 with ${clauses.length} identified clause provisions. Ask about specific topics like liability caps, non-compete terms, payment terms, or termination!`,
+    };
+  }
+
+  return {
+    text: `Regarding your query "${userPrompt}": Based on LegalEase AI contract analysis, this document contains standard commercial provisions. Please review your dashboard for clause breakdown and risk scores.`,
+  };
 }

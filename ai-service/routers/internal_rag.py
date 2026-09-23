@@ -89,6 +89,50 @@ class RagQueryResponse(BaseModel):
 # Retrieval & Answering Helpers
 # ---------------------------------------------------------------------------
 
+def _is_unreadable_query(query: str) -> bool:
+    """
+    Checks if query is gibberish, unreadable, or lacks coherent words.
+    """
+    q = query.strip().lower()
+    if len(q) < 2:
+        return True
+    if re.match(r"^[\d\W]+$", q):
+        return True
+    # Check vowel ratio for alphabetic strings >= 5 chars (e.g. asdfghjkl, qwerty, zxcvbnm)
+    alpha_words = re.findall(r"[a-z]{4,}", q)
+    for word in alpha_words:
+        vowel_count = len(re.findall(r"[aeiouy]", word))
+        if vowel_count == 0 or (vowel_count / len(word)) < 0.12:
+            return True
+    return False
+
+
+def _expand_typo_terms(query: str) -> set[str]:
+    """
+    Expands query terms with legal domain synonyms and fuzzy typo corrections.
+    """
+    q_lower = query.lower()
+    terms = set(re.findall(r"\w+", q_lower))
+
+    typo_mappings = [
+        (r"compte|compet|non-?compete|solicit|probation|employment|hiring", ["non_compete", "employment", "restriction", "solicitation"]),
+        (r"finac|finans|cost|payment|fee|price|money|expense|penalty|billing", ["payment", "financial", "fee", "cost", "interest"]),
+        (r"privac|privas|confidential|secret|data|gdpr|disclosure|nda", ["confidentiality", "privacy", "data", "disclosure"]),
+        (r"liab|liable|limit|cap|loss|damage", ["liability", "limitation", "cap", "damages"]),
+        (r"terminat|terminte|cancel|notice|breach|cure|exit|expire", ["termination", "notice", "breach", "cancel"]),
+        (r"indemn|harm|hold harmless|defend", ["indemnification", "indemnity", "harm"]),
+        (r"govern|jurisdiction|court|venue|state|law", ["governing_law", "jurisdiction", "court"]),
+        (r"litigat|disput|arbitrat|lawsuit|sue|mediation", ["dispute", "arbitration", "litigation"]),
+        (r"intellectual|ip|copyright|patent|trademark|ownership", ["intellectual_property", "copyright", "patent"]),
+    ]
+
+    for pattern, expanded in typo_mappings:
+        if re.search(pattern, q_lower):
+            terms.update(expanded)
+
+    return terms
+
+
 def _rank_chunks_for_query(
     query: str,
     chunks: List[Dict[str, Any]],
@@ -97,7 +141,7 @@ def _rank_chunks_for_query(
     """
     Ranks document chunks by keyword relevance and lexical overlap with the query.
     """
-    query_terms = set(re.findall(r"\w+", query.lower()))
+    query_terms = _expand_typo_terms(query)
     scored_chunks = []
 
     classifier = ClauseClassifier()
@@ -112,7 +156,7 @@ def _rank_chunks_for_query(
         score = overlap / max(len(query_terms), 1)
 
         # Bonus for legal keyword matches
-        if any(term in text_lower for term in ["liability", "terminate", "confidential", "indemnify", "payment", "governing"]):
+        if any(term in text_lower for term in ["liability", "terminate", "confidential", "indemnify", "payment", "governing", "compete"]):
             score += 0.2
 
         clause_type = chunk.get("clause_type")
@@ -140,6 +184,9 @@ def _generate_grounded_answer(
     Generates a high-quality, grounded legal answer.
     Calls GPT-4o if API key is valid, or uses deterministic synthesis based on context.
     """
+    if _is_unreadable_query(query):
+        return "Sorry, I am unable to understand your question. Please write again with more details about your contract (e.g., liability cap, termination, financial risk, or confidentiality)."
+
     api_key = os.getenv("OPENAI_API_KEY")
     if api_key and not api_key.startswith("your_") and api_key.startswith("sk-"):
         try:
@@ -163,7 +210,7 @@ def _generate_grounded_answer(
 
     # Deterministic fallback synthesis
     if not sources or sources[0]["score"] == 0:
-        return "Based on the provided contract sections, this specific question is not explicitly addressed in the document text."
+        return f"Regarding your question about '{query}': Based on the contract text, no specific matching clause was detected. Please check the clause breakdown on your dashboard."
 
     primary = sources[0]
     ctype = primary.get("clause_type", "relevant provision").replace("_", " ")
