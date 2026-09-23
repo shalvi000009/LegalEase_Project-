@@ -5,7 +5,7 @@ import { Spinner } from './Spinner';
 
 export interface ButtonProps extends Omit<HTMLMotionProps<'button'>, 'children'> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   isLoading?: boolean;
   fullWidth?: boolean;
   iconLeft?: React.ReactNode;
@@ -27,6 +27,7 @@ const variantStyles = {
 };
 
 const sizeStyles = {
+  xs: 'px-2 py-1 text-xs font-medium rounded-lg gap-1',
   sm: 'px-3 py-1.5 text-xs font-medium rounded-lg gap-1.5',
   md: 'px-4 py-2 text-sm font-semibold rounded-xl gap-2',
   lg: 'px-6 py-3 text-base font-semibold rounded-xl gap-2.5',

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { prisma } from "../config/db";
-import { uploadFile } from "../config/s3";
+import { uploadFile, getSignedViewUrl } from "../config/s3";
 import { enqueueAnalysisJob } from "../config/queue";
 import { BadRequestError, NotFoundError } from "../utils/errors";
 import { AuthenticatedRequest } from "../middleware/auth";
@@ -158,6 +158,26 @@ export class DocumentController {
     }
   }
 
+<<<<<<< HEAD
+=======
+  public static async getDocumentViewUrl(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const document = await prisma.document.findFirst({
+        where: { id },
+      });
+      const url = document?.s3_key ? await getSignedViewUrl(document.s3_key) : "";
+      res.status(200).json({
+        document_id: id,
+        url,
+        expires_in_seconds: 3600,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+>>>>>>> origin/feature/aiml
   public static async generateShareLink(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const reqAuth = req as AuthenticatedRequest;
@@ -165,7 +185,12 @@ export class DocumentController {
         throw new BadRequestError("User context is missing");
       }
 
+<<<<<<< HEAD
       const { id: documentId } = req.params;
+=======
+      const { id } = req.params;
+      const documentId = id;
+>>>>>>> origin/feature/aiml
 
       // Verify document ownership
       const document = await prisma.document.findFirst({
@@ -186,12 +211,79 @@ export class DocumentController {
         { expiresIn: "24h" }
       );
 
+      const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
       const shareUrl = `${req.protocol}://${req.get("host")}/api/v1/share/${token}`;
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+      await prisma.document.update({
+        where: { id: document.id },
+        data: {
+          isShared: true,
+          shareToken: token,
+          sharedAt: new Date(),
+        },
+      });
 
       res.status(200).json({
+        success: true,
         shareLink: shareUrl,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        shareableLink: `${FRONTEND_URL}/shared/${token}`,
+        share_url: `${FRONTEND_URL}/shared/${token}`,
+        share_token: token,
+        token,
+        expiresAt,
+        expires_at: expiresAt,
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public static async shareDocument(req: Request, res: Response, next: NextFunction): Promise<void> {
+    return DocumentController.generateShareLink(req, res, next);
+  }
+
+  public static async getDocumentReport(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const reportUrl = await getSignedViewUrl(`reports/${id}-report.pdf`);
+      res.status(200).json({
+        document_id: id,
+        report_url: reportUrl,
+        expires_in_seconds: 3600,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public static async streamChatSSE(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { message } = req.body || {};
+
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+
+      const responseTokens = [
+        `Based on clause analysis for document ${id}, `,
+        "the contract specifies a 30-day notice requirement for termination. ",
+        "The indemnification terms are broad and favors the client. ",
+        "We recommend adding a mutual liability cap.",
+      ];
+
+      let idx = 0;
+      const interval = setInterval(() => {
+        if (idx < responseTokens.length) {
+          res.write(`data: ${JSON.stringify({ token: responseTokens[idx], done: false })}\n\n`);
+          idx++;
+        } else {
+          res.write(`data: ${JSON.stringify({ token: "", done: true })}\n\n`);
+          clearInterval(interval);
+          res.end();
+        }
+      }, 150);
     } catch (error) {
       next(error);
     }
@@ -404,6 +496,7 @@ export class DocumentController {
       `;
 
       // Dynamically import Puppeteer to prevent compile issues when offline/mocking
+      // @ts-ignore
       const puppeteer = await import("puppeteer");
       const browser = await puppeteer.launch({
         headless: true,
@@ -420,6 +513,7 @@ export class DocumentController {
         "Content-Length": pdfBuffer.length,
       });
       res.end(pdfBuffer);
+
     } catch (error) {
       next(error);
     }

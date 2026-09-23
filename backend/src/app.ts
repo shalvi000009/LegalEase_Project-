@@ -28,12 +28,15 @@ app.use(
   })
 );
 
-// CORS configuration scoped to configured origins (supporting localhost:5173, localhost:3000, and CORS_ORIGIN)
-const corsOriginEnv = process.env.CORS_ORIGIN || "http://localhost:5173,http://localhost:3000";
-const corsOrigin = corsOriginEnv.includes(",")
-  ? corsOriginEnv.split(",")
-  : [corsOriginEnv, "http://localhost:5173", "http://localhost:3000"];
-app.use(cors({ origin: corsOrigin, credentials: true }));
+// CORS configuration scoped to configured origins (supporting comma-separated environment values, defaulting to Vite ports 3000 and 5173)
+const envOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",").map((origin) => origin.trim())
+  : [];
+const allowedOrigins = Array.from(
+  new Set([...envOrigins, "http://localhost:3000", "http://localhost:5173"])
+).filter(Boolean) as string[];
+
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 
 app.use(express.json());
 

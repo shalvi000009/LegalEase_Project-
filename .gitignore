@@ -1,5 +1,6 @@
 .venv/
 venv/
+ai-service/venv/
 __pycache__/
 *.pyc
 .env
@@ -9,6 +10,6 @@ __pycache__/
 .pytest_cache/
 node_modules/
 package-lock.json
+dist/
 backend/dist/
 frontend/dist/
-ai-service/venv/

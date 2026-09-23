@@ -1,5 +1,6 @@
 export * from './auth';
 export * from './document';
+export * from './integrations';
 
 export type Theme = 'light' | 'dark' | 'system';
 

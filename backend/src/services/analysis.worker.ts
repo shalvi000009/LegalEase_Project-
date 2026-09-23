@@ -165,6 +165,7 @@ export const startAnalysisWorker = (): Worker => {
           error
         );
 
+        // Fallback: transition status to failed
         await prisma.document
           .update({
             where: { id: documentId },

@@ -10,6 +10,13 @@ export const MOCK_ANALYSIS_RESULT: AnalysisResult = {
   filename: 'Employment_Agreement_2026.pdf',
   risk_score: 74,
   risk_level: 'high',
+  risk_dimensions: {
+    financial: 72,
+    legal: 78,
+    privacy: 60,
+    employment: 85,
+    litigation: 68,
+  },
   summary:
     'This contract contains several concerning clauses, including an indefinite worldwide non-compete clause and unbalanced termination terms with short employer notice. Review sections on intellectual property and indemnification carefully before signing.',
   key_obligations: [
@@ -155,12 +162,14 @@ export async function getDocumentAnalysis(docId: string): Promise<AnalysisResult
     employment: Math.min(100, Math.round(overallScore * 0.7)),
   };
 
+  const riskDimensions = analysisData.risk_dimensions || data.risk_dimensions || defaultDimensions;
+
   return {
     doc_id: docId,
     filename: analysisData.filename || data.filename || `Document_${docId.substring(0, 8)}.pdf`,
     risk_score: overallScore,
     risk_level: overallLevel,
-    risk_dimensions: analysisData.risk_dimensions || data.risk_dimensions || defaultDimensions,
+    risk_dimensions: riskDimensions,
     summary: analysisData.summary || 'Document analysis completed successfully.',
     key_obligations: analysisData.key_obligations || [],
     other_obligations: analysisData.other_obligations || [],
