@@ -158,8 +158,6 @@ export class DocumentController {
     }
   }
 
-<<<<<<< HEAD
-=======
   public static async getDocumentViewUrl(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
@@ -177,7 +175,6 @@ export class DocumentController {
     }
   }
 
->>>>>>> origin/feature/aiml
   public static async generateShareLink(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const reqAuth = req as AuthenticatedRequest;
@@ -185,12 +182,7 @@ export class DocumentController {
         throw new BadRequestError("User context is missing");
       }
 
-<<<<<<< HEAD
       const { id: documentId } = req.params;
-=======
-      const { id } = req.params;
-      const documentId = id;
->>>>>>> origin/feature/aiml
 
       // Verify document ownership
       const document = await prisma.document.findFirst({
