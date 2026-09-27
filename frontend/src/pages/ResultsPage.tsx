@@ -21,12 +21,15 @@ import { ShareModal } from '../components/share/ShareModal';
 import { ReportDownloadButton } from '../components/report/ReportDownloadButton';
 import { useChatStore } from '../store/chatStore';
 import { useShareLink } from '../hooks/useShareLink';
+import { useReport } from '../hooks/useReport';
 
 export const ResultsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const docId = id || 'mock-doc-123';
+
+  const { downloadReport } = useReport();
 
   // Responsive Hook for Desktop vs Mobile detection
   const isDesktop = useMediaQuery('(min-width: 1024px)');
@@ -232,7 +235,10 @@ export const ResultsPage: React.FC = () => {
         </motion.div>
 
         {/* Sticky Action Footer */}
-        <ResultsActions onAskAI={toggleChatOpen} />
+        <ResultsActions
+          onAskAI={toggleChatOpen}
+          onDownloadReport={() => downloadReport(docId, analysis?.filename)}
+        />
 
         {/* Week 5 RAG Chat Sidebar Panel */}
         <ChatSidebar

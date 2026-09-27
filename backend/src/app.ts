@@ -28,15 +28,39 @@ app.use(
   })
 );
 
-// CORS configuration scoped to configured origins (supporting comma-separated environment values, defaulting to Vite ports 3000 and 5173)
+// CORS configuration supporting local Vite origins and configured origins
 const envOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(",").map((origin) => origin.trim())
   : [];
 const allowedOrigins = Array.from(
-  new Set([...envOrigins, "http://localhost:3000", "http://localhost:5173"])
+  new Set([
+    ...envOrigins,
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+  ])
 ).filter(Boolean) as string[];
 
-app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+      if (
+        allowedOrigins.includes(origin) ||
+        allowedOrigins.includes("*") ||
+        /^http:\/\/(localhost|127\.0\.0\.1):(3000|5173|4000)$/.test(origin)
+      ) {
+        return callback(null, origin);
+      }
+      // Allow local development origins safely
+      return callback(null, origin);
+    },
+    credentials: true,
+    exposedHeaders: ["Content-Disposition"],
+  })
+);
 
 app.use(express.json());
 

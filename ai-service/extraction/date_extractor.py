@@ -15,18 +15,18 @@ import os
 import re
 from typing import Any, Dict, List, Optional
 
-# pyrefly: ignore [missing-import]
-import spacy
-# pyrefly: ignore [missing-import]
-from openai import OpenAI
-
 logger = logging.getLogger(__name__)
 
-# Load spaCy model
+# pyrefly: ignore [missing-import]
 try:
-    nlp = spacy.load("en_core_web_sm")
-except Exception as e:
-    logger.error("Failed to load spaCy model 'en_core_web_sm'. Make sure it is installed.")
+    import spacy
+    try:
+        nlp = spacy.load("en_core_web_sm")
+    except Exception as e:
+        logger.warning("Optional spaCy model 'en_core_web_sm' not installed. Using Regex date extraction fallback: %s", e)
+        nlp = None
+except ImportError:
+    spacy = None
     nlp = None
 
 # Supported categories for classification

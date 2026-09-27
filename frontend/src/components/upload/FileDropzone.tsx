@@ -16,8 +16,12 @@ export const FileDropzone: React.FC<FileDropzoneProps> = ({
     'application/pdf': ['.pdf'],
     'image/jpeg': ['.jpg', '.jpeg'],
     'image/png': ['.png'],
+    'image/webp': ['.webp'],
+    'text/plain': ['.txt', '.md'],
+    'application/msword': ['.doc'],
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
   },
-  maxSize = 10 * 1024 * 1024, // 10MB default
+  maxSize = 25 * 1024 * 1024, // 25MB default
   disabled = false,
 }) => {
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
@@ -76,7 +80,7 @@ export const FileDropzone: React.FC<FileDropzoneProps> = ({
 
         <div className="mt-6 flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
           <FileText className="w-3.5 h-3.5 text-indigo-500" />
-          <span>Supports PDF, JPG, PNG up to 10MB</span>
+          <span>Supports PDF, Images, DOCX & TXT up to 25MB</span>
         </div>
       </div>
     </div>

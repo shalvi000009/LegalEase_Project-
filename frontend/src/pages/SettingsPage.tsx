@@ -4,6 +4,7 @@ import { Mail, Bell, MessageSquare, Save, RefreshCw, Smartphone, ShieldCheck, Al
 import toast from 'react-hot-toast';
 import { useNotificationStore } from '../store/notificationStore';
 import { NotificationPreferences } from '../types/notifications';
+import { MOCK_NOTIFICATION_PREFS } from '../api/notifications';
 import { SettingsTabs, SettingsTabId } from '../components/settings/SettingsTabs';
 import { SettingsSection } from '../components/settings/SettingsSection';
 import { NotificationToggle } from '../components/settings/NotificationToggle';
@@ -19,8 +20,11 @@ export const SettingsPage: React.FC = () => {
   
   const { preferences, fetchPreferences, savePreferences, isLoading } = useNotificationStore();
   
-  // Local form state for notification preferences
-  const [formData, setFormData] = useState<NotificationPreferences>(preferences);
+  // Local form state for notification preferences with safe default fallbacks
+  const [formData, setFormData] = useState<NotificationPreferences>(() => ({
+    ...MOCK_NOTIFICATION_PREFS,
+    ...(preferences || {}),
+  }));
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [pendingTab, setPendingTab] = useState<SettingsTabId | null>(null);
@@ -31,7 +35,14 @@ export const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     if (preferences) {
-      setFormData(preferences);
+      setFormData({
+        emailEnabled: preferences.emailEnabled ?? true,
+        pushEnabled: preferences.pushEnabled ?? false,
+        smsEnabled: preferences.smsEnabled ?? false,
+        phoneNumber: preferences.phoneNumber ?? null,
+        reminderDays: Array.isArray(preferences.reminderDays) ? preferences.reminderDays : [90, 30, 7, 1],
+        rescanNotify: preferences.rescanNotify ?? true,
+      });
       setIsDirty(false);
     }
   }, [preferences]);

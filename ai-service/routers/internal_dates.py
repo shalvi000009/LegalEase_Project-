@@ -16,6 +16,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from extraction.date_extractor import detect_signing_date, process_date_extraction
+from extraction.file_resolver import resolve_document_file
 
 logger = logging.getLogger(__name__)
 
@@ -63,21 +64,9 @@ class ExtractDatesResponse(BaseModel):
 
 def _get_document_text(doc_id: str, s3_key: Optional[str]) -> str:
     """
-    Fetches the document text from S3/MinIO (or local sample fallback)
-    by running standard extraction.
+    Fetches the document text from local uploaded files or sample fallback.
     """
-    if s3_key:
-        filename = Path(s3_key).name
-    else:
-        filename = "sample_contract.pdf"
-
-    local_path = _SAMPLE_DOCS_DIR / filename
-    
-    if not local_path.exists():
-        raise HTTPException(
-            status_code=404,
-            detail=f"Local document file not found at: '{local_path}'.",
-        )
+    local_path = resolve_document_file(s3_key)
 
     suffix = local_path.suffix.lower()
     image_extensions = {".jpg", ".jpeg", ".png", ".tiff", ".tif", ".bmp", ".webp"}

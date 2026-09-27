@@ -10,6 +10,11 @@ import {
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
 
 export const startAnalysisWorker = (): Worker => {
+  if (process.env.ENABLE_REDIS !== "true") {
+    console.log("👷 Analysis worker running in direct inline mode.");
+    return null as any;
+  }
+
   const worker = new Worker(
     "document-analysis",
     async (job: Job) => {
@@ -61,49 +66,11 @@ export const startAnalysisWorker = (): Worker => {
             modelVersion = aiData.model_version ?? "legal-bert-v1.0.0";
             clauses = aiData.clauses ?? [];
           } else {
-            console.warn(
-              `[Worker] AI Service returned non-200 status: ${aiResponse.status}. Falling back to generating mock analysis.`
-            );
-
             throw new Error(`AI service status ${aiResponse.status}`);
           }
         } catch (fetchErr: unknown) {
-          console.warn(
-            "[Worker] AI Service call failed or is unavailable. Generating mock analysis data as fallback."
-          );
-
-          overallScore = Math.floor(Math.random() * 70) + 15;
-          modelVersion = "legal-bert-v1.0.0-fallback";
-
-          clauses = [
-            {
-              clause_type: "liability",
-              risk_level: "high",
-              explanation:
-                "The limitation of liability is uncapped for third-party claims, which introduces substantial commercial risk.",
-              original_text:
-                "Each party shall be liable to the other without limit for any direct or indirect damages.",
-              risk_score: 90,
-            },
-            {
-              clause_type: "confidentiality",
-              risk_level: "low",
-              explanation:
-                "Standard mutual confidentiality clause with appropriate exclusions for public domain information.",
-              original_text:
-                "The receiving party agrees to maintain the confidentiality of all proprietary information.",
-              risk_score: 10,
-            },
-            {
-              clause_type: "termination",
-              risk_level: "medium",
-              explanation:
-                "Termination for convenience requires a 90-day notice period, which is slightly longer than the standard 30-60 days.",
-              original_text:
-                "Either party may terminate this agreement upon ninety (90) days written notice to the other party.",
-              risk_score: 50,
-            },
-          ];
+          console.error(`[Worker] AI Service call failed for document ${documentId}:`, fetchErr);
+          throw fetchErr;
         }
 
         // TODO: Switch to Rishi's live per-clause dimension_scores when AI service endpoint is confirmed

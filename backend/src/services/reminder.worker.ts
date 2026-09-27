@@ -118,8 +118,8 @@ export async function processPendingReminders(): Promise<{ processedCount: numbe
  * Initialize BullMQ Queue and Worker for multi-channel daily cron reminder job.
  */
 export function startReminderWorker(): Worker | null {
-  if (isMock) {
-    console.log("👷 [Mock Worker] Mock multi-channel reminder worker initialized inline.");
+  if (isMock || process.env.ENABLE_REDIS !== "true") {
+    console.log("👷 Multi-channel reminder worker running in fault-tolerant direct mode.");
     return null;
   }
 

@@ -12,27 +12,29 @@ interface ReminderDayChipsProps {
 const PRESET_DAYS = [90, 30, 7, 1];
 
 export const ReminderDayChips: React.FC<ReminderDayChipsProps> = ({
-  selectedDays,
+  selectedDays = [],
   onChange,
   maxDays = 10,
 }) => {
   const [customInput, setCustomInput] = useState('');
   const [showCustomForm, setShowCustomForm] = useState(false);
 
+  const safeSelectedDays = Array.isArray(selectedDays) ? selectedDays : [90, 30, 7, 1];
+
   const toggleDay = (day: number) => {
-    if (selectedDays.includes(day)) {
-      if (selectedDays.length === 1) {
+    if (safeSelectedDays.includes(day)) {
+      if (safeSelectedDays.length === 1) {
         toast.error('At least one reminder day must be selected.');
         return;
       }
-      const updated = selectedDays.filter((d) => d !== day).sort((a, b) => b - a);
+      const updated = safeSelectedDays.filter((d) => d !== day).sort((a, b) => b - a);
       onChange(updated);
     } else {
-      if (selectedDays.length >= maxDays) {
+      if (safeSelectedDays.length >= maxDays) {
         toast.error(`Maximum ${maxDays} reminder days allowed.`);
         return;
       }
-      const updated = [...selectedDays, day].sort((a, b) => b - a);
+      const updated = [...safeSelectedDays, day].sort((a, b) => b - a);
       onChange(updated);
     }
   };
@@ -48,30 +50,30 @@ export const ReminderDayChips: React.FC<ReminderDayChipsProps> = ({
       toast.error('Custom reminder days cannot exceed 365 days.');
       return;
     }
-    if (selectedDays.includes(val)) {
+    if (safeSelectedDays.includes(val)) {
       toast.error(`${val} days reminder is already selected.`);
       return;
     }
-    if (selectedDays.length >= maxDays) {
+    if (safeSelectedDays.length >= maxDays) {
       toast.error(`Maximum ${maxDays} reminder days allowed.`);
       return;
     }
 
-    const updated = [...selectedDays, val].sort((a, b) => b - a);
+    const updated = [...safeSelectedDays, val].sort((a, b) => b - a);
     onChange(updated);
     setCustomInput('');
     setShowCustomForm(false);
     toast.success(`Added ${val} days reminder benchmark`);
   };
 
-  // Preset days that are not in selectedDays
-  const availablePresets = PRESET_DAYS.filter((d) => !selectedDays.includes(d));
+  // Preset days that are not in safeSelectedDays
+  const availablePresets = PRESET_DAYS.filter((d) => !safeSelectedDays.includes(d));
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2.5 items-center">
         <AnimatePresence>
-          {selectedDays.map((day) => (
+          {safeSelectedDays.map((day) => (
             <motion.button
               key={day}
               type="button"
@@ -139,7 +141,7 @@ export const ReminderDayChips: React.FC<ReminderDayChipsProps> = ({
         )}
       </div>
 
-      {selectedDays.length === 0 && (
+      {safeSelectedDays.length === 0 && (
         <div className="flex items-center gap-2 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 p-2.5 rounded-xl border border-amber-200 dark:border-amber-900">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>At least one reminder day must be selected.</span>

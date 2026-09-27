@@ -30,44 +30,13 @@ interface NotificationState {
   isBannerDismissed: () => boolean;
 }
 
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: 'n-1',
-    title: 'Master Service Agreement Expiring',
-    body: 'MSA #2024-89 with Acme Corp expires in 14 days. Review terms now.',
-    contractId: 'c-1',
-    contractTitle: 'Acme Corp Master Service Agreement',
-    createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-    read: false,
-    type: 'reminder',
-  },
-  {
-    id: 'n-2',
-    title: 'Auto-Scan Completed',
-    body: 'LegalEase successfully scanned 3 new contracts from connected accounts.',
-    createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
-    read: false,
-    type: 'rescan',
-  },
-  {
-    id: 'n-3',
-    title: 'High Risk Clause Flagged',
-    body: 'Unlimited liability clause detected in Vendor Agreement #402.',
-    contractId: 'c-3',
-    contractTitle: 'Vendor Services Agreement',
-    createdAt: new Date(Date.now() - 3600000 * 48).toISOString(),
-    read: true,
-    type: 'security',
-  },
-];
-
 export const useNotificationStore = create<NotificationState>()(
   persist(
     (set, get) => ({
       preferences: MOCK_NOTIFICATION_PREFS,
       pushPermission: typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : null,
       fcmToken: null,
-      notifications: INITIAL_NOTIFICATIONS,
+      notifications: [],
       bannerDismissedUntil: null,
       bannerNeverAsk: false,
       isLoading: false,

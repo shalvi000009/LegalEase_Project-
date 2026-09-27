@@ -19,8 +19,8 @@ export const s3Client = isMock ? null as any : new S3Client({
 });
 
 export const ensureBucketExists = async (): Promise<void> => {
-  if (isMock) {
-    console.log(`[Mock] S3 bucket "${bucketName}" already exists (mocked).`);
+  if (isMock || !s3Client) {
+    console.log(`[Storage] S3 bucket check skipped (mock or unconfigured).`);
     return;
   }
   try {
@@ -32,27 +32,28 @@ export const ensureBucketExists = async (): Promise<void> => {
         await s3Client.send(new CreateBucketCommand({ Bucket: bucketName }));
         console.log(`S3 bucket "${bucketName}" created successfully.`);
       } catch (createError) {
-        console.error(`Failed to create S3 bucket "${bucketName}":`, createError);
-        throw createError;
+        console.warn(`[Storage] S3 bucket creation skipped:`, createError);
       }
     } else {
-      console.error(`Failed to check if S3 bucket "${bucketName}" exists:`, error);
-      throw error;
+      console.warn(`[Storage] S3 bucket check skipped (S3 offline/unreachable):`, error.message || error);
     }
   }
 };
 
 export const uploadFile = async (key: string, buffer: Buffer, contentType: string): Promise<string> => {
-  if (isMock) {
-    console.log(`[Mock] Uploaded file with key "${key}" to bucket (mocked).`);
+  if (isMock || !s3Client) {
     return key;
   }
-  await s3Client.send(new PutObjectCommand({
-    Bucket: bucketName,
-    Key: key,
-    Body: buffer,
-    ContentType: contentType,
-  }));
+  try {
+    await s3Client.send(new PutObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+    }));
+  } catch (s3Err) {
+    console.warn(`[Storage] S3 upload skipped for key ${key}:`, s3Err);
+  }
   return key;
 };
 

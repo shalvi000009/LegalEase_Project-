@@ -25,6 +25,7 @@ from classification.classifier import ClauseClassifier
 from classification.risk_scoring import RiskEngine
 from classification.versioning import CURRENT_MODEL_VERSION
 from extraction.chunker import chunk_text
+from extraction.file_resolver import resolve_document_file
 from extraction.ocr_preprocessor import preprocess_and_ocr
 from extraction.pdf_extractor import (
     extract_text_from_pdf,
@@ -136,30 +137,10 @@ class ClassifyResponse(BaseModel):
 
 def _get_document_chunks(doc_id: str, s3_key: Optional[str]) -> Dict[str, Any]:
     """
-    Fetches the document text from S3/MinIO (or local sample fallback) and splits it into chunks.
+    Fetches the document text from local uploaded files or sample fallback and splits it into chunks.
     Also returns whether OCR was used and the full extracted text.
     """
-    # 1. Resolve local path
-    if s3_key:
-        filename = Path(s3_key).name
-    else:
-        # Default fallback sample contract
-        filename = "sample_contract.pdf"
-
-    local_path = _SAMPLE_DOCS_DIR / filename
-    
-    if not s3_key:
-        logger.warning(
-            "No s3_key provided for classify on doc_id='%s'. Falling back to local file '%s'.",
-            doc_id,
-            local_path,
-        )
-
-    if not local_path.exists():
-        raise HTTPException(
-            status_code=404,
-            detail=f"Local document file not found at: '{local_path}'.",
-        )
+    local_path = resolve_document_file(s3_key, default_filename="sample_contract.pdf")
 
     # 2. Extract text based on file extension
     suffix = local_path.suffix.lower()
@@ -185,11 +166,21 @@ def _get_document_chunks(doc_id: str, s3_key: Optional[str]) -> Dict[str, Any]:
             ocr_result = preprocess_and_ocr(str(local_path))
             full_text = ocr_result["text"]
             ocr_used = True
+        elif suffix in {".txt", ".text", ".md", ".doc", ".docx", ".rtf", ".json"}:
+            logger.info("Classify pipeline: Text/Document file detected; reading directly.")
+            try:
+                full_text = local_path.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                full_text = local_path.read_bytes().decode("utf-8", errors="ignore")
+            ocr_used = False
         else:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Unsupported file type '{suffix}'. Supported: .pdf, {', '.join(sorted(image_extensions))}",
-            )
+            # Fallback for any unknown format: attempt utf-8 string reading
+            logger.info("Classify pipeline: Generic file format '%s'; attempting fallback text reading.", suffix)
+            try:
+                full_text = local_path.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                full_text = local_path.read_bytes().decode("utf-8", errors="ignore")
+            ocr_used = False
     except HTTPException:
         raise
     except Exception as exc:

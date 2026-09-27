@@ -2,32 +2,56 @@ import { apiClient } from './client';
 import { Report, ShareLink } from '../types/report';
 
 /**
+ * Download PDF report binary blob from API and save locally
+ */
+export async function downloadReportFile(docId: string, filename?: string): Promise<void> {
+  const res = await apiClient.get(`/documents/${docId}/report`, {
+    responseType: 'blob',
+  });
+
+  const blob = new Blob([res.data], { type: 'application/pdf' });
+  if (blob.size === 0) {
+    throw new Error('Downloaded report is empty');
+  }
+
+  const url = window.URL.createObjectURL(blob);
+  const contentDisposition = res.headers['content-disposition'];
+  let downloadFilename = filename ? `LegalEase_Report_${filename}` : `LegalEase_Report_${docId.slice(0, 8)}.pdf`;
+  if (!downloadFilename.toLowerCase().endsWith('.pdf')) {
+    downloadFilename += '.pdf';
+  }
+  if (contentDisposition) {
+    const filenameMatch = contentDisposition.match(/filename="?([^";]+)"?/);
+    if (filenameMatch && filenameMatch[1]) {
+      downloadFilename = filenameMatch[1];
+    }
+  }
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', downloadFilename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}
+
+/**
  * Request PDF report generation for a document
  */
 export async function generateReport(docId: string): Promise<Report> {
-  try {
-    const res = await apiClient.get(`/documents/${docId}/report`);
-    const data = res.data;
-
-    const reportUrl = data.report_url || data.reportUrl || data.url || `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api/v1'}/documents/${docId}/report`;
-
-    return {
-      id: `report-${Date.now()}`,
-      docId,
-      url: reportUrl,
-      createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    };
-  } catch (error) {
-    console.warn(`[generateReport] Fallback for docId ${docId}:`, error);
-    return {
-      id: `report-mock-${Date.now()}`,
-      docId,
-      url: `https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf`,
-      createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    };
-  }
+  const res = await apiClient.get(`/documents/${docId}/report`, {
+    responseType: 'blob',
+  });
+  const blob = new Blob([res.data], { type: 'application/pdf' });
+  const url = window.URL.createObjectURL(blob);
+  return {
+    id: `report-${Date.now()}`,
+    docId,
+    url,
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+  };
 }
 
 /**

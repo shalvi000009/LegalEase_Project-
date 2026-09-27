@@ -154,15 +154,15 @@ export async function getDocumentAnalysis(docId: string): Promise<AnalysisResult
     analysisData.risk_level ??
     (overallScore > 70 ? 'high' : overallScore > 40 ? 'medium' : 'low');
 
-  const defaultDimensions = {
-    legal: Math.min(100, Math.round(overallScore * 0.95)),
-    financial: Math.min(100, Math.round(overallScore * 1.1)),
-    litigation: Math.min(100, Math.round(overallScore * 0.85)),
-    privacy: Math.min(100, Math.round(overallScore * 0.6)),
-    employment: Math.min(100, Math.round(overallScore * 0.7)),
+  const fallbackDimensions = {
+    legal: overallScore,
+    financial: 0,
+    litigation: 0,
+    privacy: 0,
+    employment: 0,
   };
 
-  const riskDimensions = analysisData.risk_dimensions || data.risk_dimensions || defaultDimensions;
+  const riskDimensions = analysisData.risk_dimensions || data.risk_dimensions || fallbackDimensions;
 
   return {
     doc_id: docId,

@@ -9,8 +9,8 @@ const isMock = process.env.MOCK_SERVICES === 'true';
  * Initialize BullMQ Queue and Worker for 15-minute repeatable auto-scan polling job.
  */
 export function startAutoScanWorker(): Worker | null {
-  if (isMock) {
-    console.log('👷 [Mock Worker] Mock auto-scan integrations worker initialized inline.');
+  if (isMock || process.env.ENABLE_REDIS !== 'true') {
+    console.log('👷 Auto-scan worker running in fault-tolerant direct mode.');
     return null;
   }
 

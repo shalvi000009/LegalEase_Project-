@@ -24,88 +24,154 @@ const parseRedisUrl = (url: string): ConnectionOptions => {
   }
 };
 
-export const connectionOptions = isMock ? {} as any : parseRedisUrl(redisUrl);
+const enableRedis = process.env.ENABLE_REDIS === "true" && !isMock;
+export const connectionOptions = enableRedis ? parseRedisUrl(redisUrl) : {} as any;
 
-export const analysisQueue = isMock ? null as any : new Queue("document-analysis", {
+export const analysisQueue = enableRedis ? new Queue("document-analysis", {
   connection: connectionOptions,
-});
+}) : null as any;
+
+export const processDocumentJobReal = async (documentId: string, s3Key: string): Promise<void> => {
+  const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000";
+  console.log(`[Worker] Started processing document ${documentId} with s3Key ${s3Key}`);
+
+  try {
+    await prisma.document.update({
+      where: { id: documentId },
+      data: { status: "processing" },
+    });
+  } catch (err) {
+    console.warn(`[Worker] Status update to processing warning for ${documentId}:`, err);
+  }
+
+  try {
+    const aiResponse = await fetch(`${AI_SERVICE_URL}/api/v1/analyze`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ s3_key: s3Key, document_id: documentId }),
+    });
+
+    if (!aiResponse.ok) {
+      throw new Error(`AI Service classification status ${aiResponse.status}`);
+    }
+
+    const aiData: any = await aiResponse.json();
+    const overallScore = aiData.overall_risk_score ?? 50;
+    const modelVersion = aiData.model_version ?? "legal-bert-v1.0.0";
+    const clauses = aiData.clauses ?? [];
+    const riskDimensions = aiData.risk_dimensions || null;
+    const weightedOverallScore = aiData.weighted_risk_score || overallScore;
+
+    const preparedClauses = clauses.map((c: any) => ({
+      analysis_id: "",
+      clause_type: c.clause_type,
+      risk_level: c.risk_level,
+      explanation: c.explanation || c.matching_rules?.join("; ") || `Clause classified as ${c.clause_type}`,
+      original_text: c.original_text || c.text || "",
+      risk_score: c.risk_score,
+      dimension_contributions: c.dimension_scores || c.dimension_contributions || null,
+    }));
+
+    const analysis = await prisma.analysis.create({
+      data: {
+        document_id: documentId,
+        overall_risk_score: weightedOverallScore,
+        model_version: modelVersion,
+        risk_dimensions: riskDimensions as any,
+      },
+    });
+
+    if (preparedClauses.length > 0) {
+      await prisma.clause.createMany({
+        data: preparedClauses.map((c: any) => ({
+          ...c,
+          analysis_id: analysis.id,
+        })),
+      });
+    }
+
+    // Extract dates & schedule reminders
+    try {
+      const datesRes = await fetch(`${AI_SERVICE_URL}/internal/extract-dates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ doc_id: documentId, s3_key: s3Key }),
+      });
+
+      if (datesRes.ok) {
+        const datesData: any = await datesRes.json();
+        const extractedDates = datesData.dates || [];
+
+        const docObj = await prisma.document.findUnique({ where: { id: documentId } });
+        if (docObj && extractedDates.length > 0) {
+          for (const d of extractedDates) {
+            if (d.resolved_date) {
+              const contractDate = await prisma.contractDate.create({
+                data: {
+                  doc_id: documentId,
+                  date_type: d.type && ["expiry_date", "renewal_date", "notice_deadline", "payment_due", "probation_end", "lock_in_end"].includes(d.type) ? d.type : "other",
+                  raw_text: d.raw_text || "Extracted date",
+                  resolved_date: new Date(d.resolved_date),
+                  confidence: d.confidence || 0.85,
+                  user_confirmed: false,
+                  is_active: true,
+                },
+              });
+
+              const scheduledFor = new Date(contractDate.resolved_date.getTime() - 30 * 24 * 60 * 60 * 1000);
+              await prisma.reminder.create({
+                data: {
+                  user_id: docObj.user_id,
+                  contract_date_id: contractDate.id,
+                  days_before: 30,
+                  scheduled_for: scheduledFor > new Date() ? scheduledFor : new Date(),
+                  status: "pending",
+                  channel: "email",
+                },
+              });
+            }
+          }
+        }
+      }
+    } catch (datesErr) {
+      console.warn(`[Worker] Inline date extraction warning for ${documentId}:`, datesErr);
+    }
+
+    await prisma.document.update({
+      where: { id: documentId },
+      data: { status: "done" },
+    });
+    console.log(`[Worker] Successfully completed processing real document ${documentId}`);
+  } catch (error: any) {
+    console.error(`[Worker] Failed to process document ${documentId}:`, error?.stack || error);
+    await prisma.document.update({
+      where: { id: documentId },
+      data: { status: "failed" },
+    }).catch(() => {});
+  }
+};
 
 export const enqueueAnalysisJob = async (documentId: string, s3Key: string): Promise<void> => {
-  if (isMock) {
-    console.log(`[Mock Queue] Enqueued analysis job for document ${documentId}`);
-    // Simulate background worker inline
-    setTimeout(async () => {
-      try {
-        console.log(`[Mock Worker] Started processing document ${documentId}`);
-        await prisma.document.update({
-          where: { id: documentId },
-          data: { status: "processing" },
-        });
-
-        // Simulate 5 seconds processing latency
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-
-        const overallScore = Math.floor(Math.random() * 70) + 15;
-        const analysis = await prisma.analysis.create({
-          data: {
-            document_id: documentId,
-            overall_risk_score: overallScore,
-            model_version: "legal-bert-v1.0.0-mock",
-          },
-        });
-
-        const mockClauses = [
-          {
-            analysis_id: analysis.id,
-            clause_type: "liability",
-            risk_level: "high",
-            explanation: "The limitation of liability is uncapped for third-party claims, which introduces substantial commercial risk.",
-            original_text: "Each party shall be liable to the other without limit for any direct or indirect damages.",
-            risk_score: 90,
-          },
-          {
-            analysis_id: analysis.id,
-            clause_type: "confidentiality",
-            risk_level: "low",
-            explanation: "Standard mutual confidentiality clause with appropriate exclusions for public domain information.",
-            original_text: "The receiving party agrees to maintain the confidentiality of all proprietary information.",
-            risk_score: 10,
-          },
-          {
-            analysis_id: analysis.id,
-            clause_type: "termination",
-            risk_level: "medium",
-            explanation: "Termination for convenience requires a 90-day notice period, which is slightly longer than the standard 30-60 days.",
-            original_text: "Either party may terminate this agreement upon ninety (90) days written notice to the other party.",
-            risk_score: 50,
-          },
-        ];
-
-        await prisma.clause.createMany({
-          data: mockClauses,
-        });
-
-        await prisma.document.update({
-          where: { id: documentId },
-          data: { status: "done" },
-        });
-        console.log(`[Mock Worker] Successfully completed document ${documentId}`);
-      } catch (err) {
-        console.error(`[Mock Worker] Error processing document ${documentId} in mock:`, err);
-      }
-    }, 1000);
+  if (isMock || !analysisQueue) {
+    setTimeout(() => {
+      processDocumentJobReal(documentId, s3Key);
+    }, 100);
     return;
   }
 
-  await analysisQueue.add(
-    "analyze_document",
-    { documentId, s3Key },
-    {
-      attempts: 3,
-      backoff: {
-        type: "exponential",
-        delay: 5000,
-      },
-    }
-  );
+  try {
+    await analysisQueue.add(
+      "analyze_document",
+      { documentId, s3Key },
+      {
+        attempts: 3,
+        backoff: { type: "exponential", delay: 5000 },
+      }
+    );
+  } catch (queueErr) {
+    console.warn(`[Queue] BullMQ add failed (Redis offline). Falling back to inline async processing:`, queueErr);
+    setTimeout(() => {
+      processDocumentJobReal(documentId, s3Key);
+    }, 100);
+  }
 };

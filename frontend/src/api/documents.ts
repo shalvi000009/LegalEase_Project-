@@ -35,17 +35,17 @@ export async function uploadDocument(
     status: data.document?.status || data.status || 'uploaded',
     document: data.document
       ? {
-          id: data.document.id,
-          filename: data.document.filename,
-          fileType: file.type,
-          fileSize: file.size,
-          status: data.document.status,
-          uploadProgress: 100,
-          riskScore: data.document.riskScore ?? null,
-          createdAt: data.document.created_at || new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          s3Key: data.document.s3_key,
-        }
+        id: data.document.id,
+        filename: data.document.filename,
+        fileType: file.type,
+        fileSize: file.size,
+        status: data.document.status,
+        uploadProgress: 100,
+        riskScore: data.document.riskScore ?? null,
+        createdAt: data.document.created_at || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        s3Key: data.document.s3_key,
+      }
       : undefined,
   };
 }
@@ -67,8 +67,8 @@ export async function getDocumentStatus(docId: string): Promise<DocumentStatusRe
       message: isDone
         ? 'Analysis complete'
         : isFailed
-        ? 'Analysis failed'
-        : 'Document is processing...',
+          ? 'Analysis failed'
+          : 'Document is processing...',
       status: isDone ? 'completed' : isFailed ? 'failed' : 'processing',
       progress: isDone ? 100 : isFailed ? 0 : 65,
       riskScore: data.document.riskScore ?? null,
@@ -258,7 +258,7 @@ export async function getDocuments(
         fileSize: d.fileSize || 1024 * 750,
         status: (d.status === 'done' ? 'completed' : d.status) || 'completed',
         uploadProgress: 100,
-        riskScore: d.riskScore ?? d.overall_risk_score ?? (d.status === 'done' || d.status === 'completed' ? Math.floor(Math.random() * 50) + 20 : null),
+        riskScore: d.riskScore ?? d.overall_risk_score ?? d.risk_score ?? null,
         createdAt: d.created_at || d.createdAt || new Date().toISOString(),
         updatedAt: d.updated_at || d.updatedAt || new Date().toISOString(),
         s3Key: d.s3_key || d.s3Key,
@@ -275,87 +275,15 @@ export async function getDocuments(
       };
     }
 
-    throw new Error('Invalid backend documents response array');
-  } catch (error) {
-    console.warn('GET /api/v1/documents fallback mock generator:', error);
-    // Mock dataset for fallback/testing
-    const mockList: Document[] = [
-      {
-        id: 'doc-001',
-        filename: 'Master_Services_Agreement_2026.pdf',
-        fileType: 'application/pdf',
-        fileSize: 2450000,
-        status: 'completed',
-        uploadProgress: 100,
-        riskScore: 78,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-      },
-      {
-        id: 'doc-002',
-        filename: 'Employment_Contract_Krina.pdf',
-        fileType: 'application/pdf',
-        fileSize: 1120000,
-        status: 'completed',
-        uploadProgress: 100,
-        riskScore: 24,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-      },
-      {
-        id: 'doc-003',
-        filename: 'Software_Vendor_NDA_Draft.pdf',
-        fileType: 'application/pdf',
-        fileSize: 850000,
-        status: 'processing',
-        uploadProgress: 65,
-        riskScore: null,
-        createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-      },
-      {
-        id: 'doc-004',
-        filename: 'Commercial_Lease_Agreement.pdf',
-        fileType: 'application/pdf',
-        fileSize: 4200000,
-        status: 'completed',
-        uploadProgress: 100,
-        riskScore: 62,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-      },
-      {
-        id: 'doc-005',
-        filename: 'Corrupted_Contract_Scan.pdf',
-        fileType: 'application/pdf',
-        fileSize: 500000,
-        status: 'failed',
-        uploadProgress: 0,
-        riskScore: null,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
-      },
-    ];
-
-    let filtered = mockList;
-    if (status && status !== 'all') {
-      filtered = filtered.filter((d) => d.status === status);
-    }
-    if (search.trim()) {
-      filtered = filtered.filter((d) => d.filename.toLowerCase().includes(search.toLowerCase()));
-    }
-
-    const startIndex = (page - 1) * limit;
-    const paginatedDocs = filtered.slice(startIndex, startIndex + limit);
-
     return {
-      documents: paginatedDocs,
-      pagination: {
-        total: filtered.length,
-        page,
-        limit,
-        totalPages: Math.ceil(filtered.length / limit) || 1,
-      },
+      documents: [],
+      pagination: { total: 0, page: 1, limit, totalPages: 1 },
+    };
+  } catch (error) {
+    console.error('GET /api/v1/documents failed:', error);
+    return {
+      documents: [],
+      pagination: { total: 0, page: 1, limit, totalPages: 1 },
     };
   }
 }

@@ -69,23 +69,16 @@ export const UploadPage: React.FC = () => {
   const handleDrop = useCallback(
     (acceptedFiles: File[], fileRejections: any[]) => {
       if (fileRejections.length > 0) {
-        toast.error('Please upload a PDF, JPG, or PNG file under 10MB');
+        toast.error('Please upload a valid contract document or image under 25MB');
         return;
       }
 
       const file = acceptedFiles[0];
       if (!file) return;
 
-      // Validate Size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error('File size exceeds 10MB limit. Please choose a smaller file.');
-        return;
-      }
-
-      // Validate File Type
-      const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
-      if (!validTypes.includes(file.type)) {
-        toast.error('Please upload a PDF, JPG, or PNG file under 10MB');
+      // Validate Size (max 25MB)
+      if (file.size > 25 * 1024 * 1024) {
+        toast.error('File size exceeds 25MB limit. Please choose a smaller file.');
         return;
       }
 

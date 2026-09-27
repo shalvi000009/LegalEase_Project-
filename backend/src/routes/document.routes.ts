@@ -8,7 +8,7 @@ const router = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
+    fileSize: 25 * 1024 * 1024, // 25MB
   },
 });
 
@@ -43,7 +43,27 @@ const upload = multer({
  *       401:
  *         description: Authentication failed
  */
-router.post("/", requireAuth, upload.single("file"), DocumentController.uploadDocument);
+router.post(
+  "/",
+  requireAuth,
+  (req, res, next) => {
+    upload.single("file")(req, res, (err: any) => {
+      if (err instanceof multer.MulterError) {
+        return res.status(400).json({
+          error_code: "MULTER_ERROR",
+          message: `Upload error: ${err.message}`,
+        });
+      } else if (err) {
+        return res.status(400).json({
+          error_code: "BAD_REQUEST",
+          message: err.message || "File upload failed",
+        });
+      }
+      next();
+    });
+  },
+  DocumentController.uploadDocument
+);
 
 /**
  * @openapi

@@ -198,4 +198,100 @@ router.post("/", requireAuth, async (req: Request, res: Response, next: NextFunc
   }
 });
 
+import jwt from "jsonwebtoken";
+
+const userNotificationsMap = new Map<string, any[]>();
+const sseClientsMap = new Map<string, Set<Response>>();
+
+export function emitServerNotification(userId: string, notification: {
+  title: string;
+  body: string;
+  contractId?: string;
+  contractTitle?: string;
+  type?: 'reminder' | 'system' | 'rescan' | 'security';
+}) {
+  const item = {
+    id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    title: notification.title,
+    body: notification.body,
+    contractId: notification.contractId,
+    contractTitle: notification.contractTitle,
+    createdAt: new Date().toISOString(),
+    read: false,
+    type: notification.type || 'system',
+  };
+
+  const list = userNotificationsMap.get(userId) || [];
+  list.unshift(item);
+  userNotificationsMap.set(userId, list.slice(0, 50));
+
+  const clients = sseClientsMap.get(userId);
+  if (clients) {
+    for (const clientRes of clients) {
+      try {
+        clientRes.write(`data: ${JSON.stringify(item)}\n\n`);
+      } catch {}
+    }
+  }
+}
+
+/**
+ * Get active in-app notifications
+ */
+router.get("/notifications", requireAuth, (req: Request, res: Response) => {
+  const reqAuth = req as AuthenticatedRequest;
+  const userId = reqAuth.user?.id || 'demo-user';
+  const list = userNotificationsMap.get(userId) || [
+    {
+      id: "welcome-1",
+      title: "Welcome to LegalEase",
+      body: "Real-time AI contract monitoring system active.",
+      createdAt: new Date().toISOString(),
+      read: false,
+      type: "system",
+    },
+  ];
+  res.status(200).json(list);
+});
+
+/**
+ * SSE Real-time Notification Stream
+ */
+router.get("/stream", (req: Request, res: Response) => {
+  const token = (req.query.token as string) || (req.headers.authorization ? req.headers.authorization.split(" ")[1] : null);
+  let userId = "demo-user";
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET || "legalease_dev_access_secret_key_2026") as any;
+      if (decoded && decoded.sub) userId = decoded.sub;
+    } catch {}
+  }
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+  });
+  res.write(":\n\n");
+
+  if (!sseClientsMap.has(userId)) {
+    sseClientsMap.set(userId, new Set());
+  }
+  sseClientsMap.get(userId)!.add(res);
+
+  // Send heartbeat every 20 seconds to keep connection alive
+  const timer = setInterval(() => {
+    try {
+      res.write(": heartbeat\n\n");
+    } catch {
+      clearInterval(timer);
+    }
+  }, 20000);
+
+  req.on("close", () => {
+    clearInterval(timer);
+    sseClientsMap.get(userId)?.delete(res);
+  });
+});
+
 export default router;

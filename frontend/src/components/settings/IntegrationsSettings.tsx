@@ -21,8 +21,9 @@ export const IntegrationsSettings: React.FC = () => {
     fetchIntegrations();
   }, [fetchIntegrations]);
 
-  const gmailIntegration = integrations.find((i) => i.provider === 'gmail');
-  const driveIntegration = integrations.find((i) => i.provider === 'google_drive');
+  const safeIntegrations = Array.isArray(integrations) ? integrations : [];
+  const gmailIntegration = safeIntegrations.find((i) => i.provider === 'gmail');
+  const driveIntegration = safeIntegrations.find((i) => i.provider === 'google_drive');
 
   const handleOpenConnect = (provider: IntegrationProvider) => {
     setConnectModalProvider(provider);

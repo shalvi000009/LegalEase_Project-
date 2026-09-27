@@ -5,6 +5,8 @@ import { Footer } from './Footer';
 import { PushPermissionPrompt } from '../notifications/PushPermissionPrompt';
 import { NotificationBanner } from '../notifications/NotificationBanner';
 import { usePushNotifications } from '../../hooks/usePushNotifications';
+import { ChatSidebar } from '../chat/ChatSidebar';
+import { useChatStore } from '../../store/chatStore';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -13,6 +15,7 @@ interface MainLayoutProps {
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { activeForegroundNotice, clearForegroundNotice } = usePushNotifications();
+  const { isChatOpen, setIsChatOpen, currentDocId } = useChatStore();
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
@@ -28,6 +31,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           <div className="max-w-7xl mx-auto space-y-6">{children}</div>
         </main>
       </div>
+      <ChatSidebar
+        docId={currentDocId}
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+      />
       <Footer />
     </div>
   );

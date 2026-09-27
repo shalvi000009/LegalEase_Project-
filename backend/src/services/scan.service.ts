@@ -7,13 +7,16 @@ const prisma = new PrismaClient();
 
 const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
 const REDIS_PORT = parseInt(process.env.REDIS_PORT || '6379', 10);
-const redisConnection = new Redis({
+const enableRedis = process.env.ENABLE_REDIS === 'true';
+
+export const redisConnection = enableRedis ? new Redis({
   host: REDIS_HOST,
   port: REDIS_PORT,
   maxRetriesPerRequest: null,
-});
+  lazyConnect: true,
+}) : null;
 
-export const documentAnalysisQueue = new Queue('analyze-document', { connection: redisConnection as any });
+export const documentAnalysisQueue = enableRedis && redisConnection ? new Queue('analyze-document', { connection: redisConnection as any }) : null;
 
 export class ScanService {
   /**

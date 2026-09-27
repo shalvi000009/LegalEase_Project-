@@ -8,11 +8,13 @@ import {
   Settings,
   X,
   Radio,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../hooks/useAuth';
 import { useVaultStore } from '../../store/vaultStore';
 import { useIntegrationStore } from '../../store/integrationStore';
+import { useChatStore } from '../../store/chatStore';
 
 interface NavItem {
   icon: React.ElementType;
@@ -50,6 +52,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onCloseMob
   const { user } = useAuth();
   const contracts = useVaultStore((state) => state.contracts);
   const integrations = useIntegrationStore((state) => state.integrations);
+  const { isChatOpen, toggleChatOpen } = useChatStore();
   const expiringCount = contracts.filter((c) => c.status === 'expiring_soon' || (c.daysRemaining > 0 && c.daysRemaining <= 30)).length;
   const activeIntegrationsCount = integrations.filter((i) => i.isActive).length;
 
@@ -71,7 +74,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onCloseMob
           )}
         </div>
 
-        {navItems.map((item) => {
+        {navItems.filter(item => item.href !== '/settings').map((item) => {
           const Icon = item.icon;
           const badgeText = item.getBadge ? item.getBadge(expiringCount, activeIntegrationsCount) : item.badge;
 
@@ -98,6 +101,54 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onCloseMob
                   {badgeText}
                 </span>
               )}
+            </NavLink>
+          );
+        })}
+
+        {/* AI Assistant (Chatbot) */}
+        <button
+          type="button"
+          onClick={() => {
+            toggleChatOpen();
+            if (onCloseMobile) onCloseMobile();
+          }}
+          className={cn(
+            'w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-semibold transition-all duration-200 min-h-[44px]',
+            isChatOpen
+              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 font-bold'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-slate-100'
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <MessageSquare className="w-4 h-4 shrink-0 text-indigo-500" />
+            <span>AI Assistant</span>
+          </div>
+          <span className="text-[10px] bg-indigo-500/20 text-indigo-500 dark:text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded-full font-bold">
+            Chat
+          </span>
+        </button>
+
+        {/* Settings (At the very last position) */}
+        {navItems.filter(item => item.href === '/settings').map((item) => {
+          const Icon = item.icon;
+          return (
+            <NavLink
+              key={item.label}
+              to={item.href}
+              onClick={onCloseMobile}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-semibold transition-all duration-200 min-h-[44px]',
+                  isActive
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 font-bold'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-slate-100'
+                )
+              }
+            >
+              <div className="flex items-center gap-3">
+                <Icon className="w-4 h-4 shrink-0" />
+                <span>{item.label}</span>
+              </div>
             </NavLink>
           );
         })}

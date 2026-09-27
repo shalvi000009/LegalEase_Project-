@@ -6,7 +6,7 @@ import {
   onMessageForeground,
 } from '../lib/firebase';
 import { useNotificationStore } from '../store/notificationStore';
-import { unregisterFCMToken } from '../api/notifications';
+import { fetchLiveNotifications, subscribeNotificationStream, unregisterFCMToken } from '../api/notifications';
 import toast from 'react-hot-toast';
 
 export function usePushNotifications() {
@@ -34,6 +34,25 @@ export function usePushNotifications() {
       setPushPermission(Notification.permission);
     }
   }, [setPushPermission]);
+
+  // Connect to Real-time Backend SSE Stream & Sync initial notifications
+  useEffect(() => {
+    fetchLiveNotifications().then((items) => {
+      if (Array.isArray(items)) {
+        items.forEach((item) => addNotification(item));
+      }
+    });
+
+    const unsubscribeSSE = subscribeNotificationStream((item) => {
+      addNotification(item);
+      setActiveForegroundNotice(item);
+      toast.success(`${item.title}: ${item.body}`);
+    });
+
+    return () => {
+      unsubscribeSSE();
+    };
+  }, [addNotification]);
 
   // Handle foreground push messages
   useEffect(() => {

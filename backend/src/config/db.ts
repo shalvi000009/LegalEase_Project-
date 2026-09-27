@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import crypto from "crypto";
 
 const globalForPrisma = global as unknown as { prisma: any };
 const isMock = process.env.MOCK_SERVICES === "true";
@@ -21,7 +22,7 @@ class MockPrisma {
     },
     create: async ({ data }: any) => {
       const u = {
-        id: data.id || "mock-user-uuid-" + Date.now(),
+        id: data.id || crypto.randomUUID(),
         name: data.name,
         email: data.email,
         password_hash: data.password_hash,
@@ -35,7 +36,7 @@ class MockPrisma {
   public refreshToken = {
     create: async ({ data }: any) => {
       const rt = {
-        id: "mock-rt-uuid-" + Date.now(),
+        id: crypto.randomUUID(),
         user_id: data.user_id,
         token_hash: data.token_hash,
         expires_at: data.expires_at,
@@ -61,7 +62,7 @@ class MockPrisma {
   public document = {
     create: async ({ data }: any) => {
       const doc = {
-        id: data.id || "mock-uuid-" + Date.now(),
+        id: data.id || crypto.randomUUID(),
         user_id: data.user_id,
         filename: data.filename,
         s3_key: data.s3_key,
@@ -100,7 +101,7 @@ class MockPrisma {
   public analysis = {
     create: async ({ data }: any) => {
       const a = {
-        id: data.id || "mock-analysis-uuid-" + Date.now(),
+        id: data.id || crypto.randomUUID(),
         document_id: data.document_id,
         overall_risk_score: data.overall_risk_score,
         model_version: data.model_version,
@@ -124,7 +125,7 @@ class MockPrisma {
   public clause = {
     createMany: async ({ data }: any) => {
       const newClauses = data.map((c: any) => ({
-        id: "mock-clause-uuid-" + Math.random(),
+        id: crypto.randomUUID(),
         analysis_id: c.analysis_id,
         clause_type: c.clause_type,
         risk_level: c.risk_level,
@@ -143,7 +144,7 @@ class MockPrisma {
   public chatSession = {
     create: async ({ data }: any) => {
       const cs = {
-        id: data.id || "mock-chat-session-uuid-" + Date.now(),
+        id: data.id || crypto.randomUUID(),
         document_id: data.document_id,
         created_at: new Date(),
       };
@@ -183,7 +184,7 @@ class MockPrisma {
   public message = {
     create: async ({ data }: any) => {
       const msg = {
-        id: data.id || "mock-message-uuid-" + Date.now(),
+        id: data.id || crypto.randomUUID(),
         chat_session_id: data.chat_session_id,
         sender: data.sender,
         content: data.content,
@@ -214,7 +215,7 @@ class MockPrisma {
   public contractDate = {
     create: async ({ data }: any) => {
       const cd = {
-        id: data.id || "mock-cd-uuid-" + Date.now(),
+        id: data.id || crypto.randomUUID(),
         doc_id: data.doc_id,
         date_type: data.date_type,
         raw_text: data.raw_text,
@@ -252,7 +253,7 @@ class MockPrisma {
   public reminder = {
     create: async ({ data }: any) => {
       const rem = {
-        id: data.id || "mock-reminder-uuid-" + Date.now(),
+        id: data.id || crypto.randomUUID(),
         user_id: data.user_id,
         contract_date_id: data.contract_date_id,
         days_before: data.days_before,
@@ -343,7 +344,9 @@ class MockPrisma {
   public $disconnect = async () => {};
 }
 
-export const prisma = isMock
+const useInMemoryDb = process.env.USE_IN_MEMORY_DB === "true" || isMock;
+
+export const prisma = useInMemoryDb
   ? (globalForPrisma.prisma || new MockPrisma())
   : (globalForPrisma.prisma || new PrismaClient({ log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"] }));
 

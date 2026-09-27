@@ -127,7 +127,7 @@ export class ChatController {
 
       // Generate AI answer automatically for non-streaming consumers
       const responseData = await generateSmartChatAnswer(content.trim(), session.document_id);
-      
+
       const aiMessage = await prisma.message.create({
         data: {
           chat_session_id: sessionId,
@@ -231,7 +231,7 @@ export class ChatController {
       const streamInterval = setInterval(async () => {
         if (currentIndex >= words.length) {
           clearInterval(streamInterval);
-          
+
           // Save the AI message to the database
           try {
             await prisma.message.create({

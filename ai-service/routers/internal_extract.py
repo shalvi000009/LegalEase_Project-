@@ -60,6 +60,7 @@ from pydantic import BaseModel, Field
 
 from extraction.chunker import chunk_stats, chunk_text
 from extraction.embeddings import embed_and_upsert
+from extraction.file_resolver import resolve_document_file
 from extraction.ocr_preprocessor import preprocess_and_ocr
 from extraction.pdf_extractor import (
     extract_text_from_pdf,
@@ -212,7 +213,7 @@ async def extract_document(request: ExtractRequest) -> ExtractResponse:
     # ------------------------------------------------------------------
     # TODO: BLOCKED on Shalvi's S3 config — _stub_fetch_from_s3 reads from sample_docs/
     try:
-        local_file: Path = _stub_fetch_from_s3(doc_id, s3_key)
+        local_file: Path = resolve_document_file(s3_key)
     except HTTPException:
         raise
     except Exception as exc:
@@ -253,14 +254,22 @@ async def extract_document(request: ExtractRequest) -> ExtractResponse:
             full_text = ocr_result["text"]
             pipeline_used = "ocr"
 
+        elif suffix in {".txt", ".text", ".md", ".doc", ".docx", ".rtf", ".json"}:
+            logger.info("Text/Document file detected; reading directly.")
+            try:
+                full_text = local_file.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                full_text = local_file.read_bytes().decode("utf-8", errors="ignore")
+            pipeline_used = "text"
+
         else:
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    f"Unsupported file type '{suffix}'. "
-                    f"Supported: .pdf, {', '.join(sorted(image_extensions))}"
-                ),
-            )
+            # Fallback for any unknown format
+            logger.info("Generic file format '%s'; attempting fallback text reading.", suffix)
+            try:
+                full_text = local_file.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                full_text = local_file.read_bytes().decode("utf-8", errors="ignore")
+            pipeline_used = "text"
 
     except HTTPException:
         raise

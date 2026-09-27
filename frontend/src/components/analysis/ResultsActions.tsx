@@ -15,8 +15,9 @@ export const ResultsActions: React.FC<ResultsActionsProps> = ({
   onAskAI,
 }) => {
   const handleDownload = () => {
-    if (onDownloadReport) onDownloadReport();
-    else toast.success('Report download started (PDF export)');
+    if (onDownloadReport) {
+      onDownloadReport();
+    }
   };
 
   const handleShare = () => {

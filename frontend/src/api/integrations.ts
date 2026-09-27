@@ -147,8 +147,23 @@ function setStoredScanHistory(items: ScanLogEntry[]): void {
  */
 export async function getIntegrations(): Promise<Integration[]> {
   try {
-    const response = await apiClient.get<Integration[]>('/integrations');
-    return response.data;
+    const response = await apiClient.get<any>('/integrations');
+    const rawData = response.data;
+    const items = Array.isArray(rawData)
+      ? rawData
+      : Array.isArray(rawData?.integrations)
+      ? rawData.integrations
+      : [];
+
+    return items.map((item: any) => ({
+      id: item.id || `int-${item.provider || 'gen'}-${Date.now()}`,
+      provider: item.provider,
+      email: item.email || item.email_address || item.emailAddress,
+      folderId: item.folderId || item.folder_id,
+      lastScannedAt: item.lastScannedAt || item.last_scanned_at || item.updated_at || item.updatedAt || item.created_at,
+      isActive: typeof item.isActive === 'boolean' ? item.isActive : (item.is_active !== undefined ? Boolean(item.is_active) : true),
+      createdAt: item.createdAt || item.created_at,
+    }));
   } catch {
     // Fallback to client mock state if backend endpoint is not ready
     return getStoredIntegrations();
@@ -224,35 +239,42 @@ export async function getScanHistory(
   filters?: ScanHistoryFilters
 ): Promise<ScanPaginatedResponse<ScanLogEntry>> {
   try {
-    const response = await apiClient.get<ScanPaginatedResponse<ScanLogEntry>>('/integrations/scan-history', {
+    const res = await apiClient.get<any>('/scan-history', {
       params: { page, limit, ...filters },
     });
-    return response.data;
-  } catch {
-    let history = getStoredScanHistory();
+    const raw = res.data;
+    const items = raw.items || raw.data || [];
+    const total = (raw.pagination?.total ?? raw.total) || items.length;
+    const totalPages = (raw.pagination?.pages ?? raw.totalPages) || Math.ceil(total / limit) || 1;
 
-    if (filters?.action && filters.action !== 'all') {
-      history = history.filter((item) => item.action === filters.action);
-    }
-
-    if (filters?.search) {
-      const q = filters.search.toLowerCase();
-      history = history.filter(
-        (item) => item.sourceName.toLowerCase().includes(q) || item.sourceRef.toLowerCase().includes(q)
-      );
-    }
-
-    const total = history.length;
-    const totalPages = Math.ceil(total / limit) || 1;
-    const start = (page - 1) * limit;
-    const data = history.slice(start, start + limit);
+    const mappedData: ScanLogEntry[] = items.map((item: any) => ({
+      id: item.id || `log-${Date.now()}`,
+      integrationId: item.integration_id || item.integrationId || '',
+      provider: item.integration?.provider || item.provider || 'gmail',
+      accountEmail: item.integration?.email_address || item.accountEmail || 'user@example.com',
+      sourceRef: item.source_ref || item.sourceRef || 'inbound',
+      sourceName: item.source_name || item.sourceName || item.document?.filename || 'Document.pdf',
+      action: item.action || 'detected',
+      classifierScore: item.classifier_score ?? item.classifierScore ?? 0.95,
+      documentId: item.document_id || item.documentId || item.document?.id,
+      documentFilename: item.document?.filename || item.documentFilename,
+      createdAt: item.created_at || item.createdAt || new Date().toISOString(),
+    }));
 
     return {
-      data,
+      data: mappedData,
       total,
       page,
       limit,
       totalPages,
+    };
+  } catch {
+    return {
+      data: [],
+      total: 0,
+      page: 1,
+      limit,
+      totalPages: 1,
     };
   }
 }

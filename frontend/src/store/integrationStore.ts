@@ -32,27 +32,31 @@ export const useIntegrationStore = create<IntegrationState>((set) => ({
   isLoading: false,
   error: null,
 
-  setIntegrations: (integrations) => set({ integrations }),
+  setIntegrations: (integrations) => set({ integrations: Array.isArray(integrations) ? integrations : [] }),
 
   addIntegration: (newInt) =>
     set((state) => {
-      const exists = state.integrations.some((i) => i.id === newInt.id || i.provider === newInt.provider);
+      const list = Array.isArray(state.integrations) ? state.integrations : [];
+      const exists = list.some((i) => i.id === newInt.id || i.provider === newInt.provider);
       if (exists) {
         return {
-          integrations: state.integrations.map((i) =>
+          integrations: list.map((i) =>
             i.provider === newInt.provider ? newInt : i
           ),
         };
       }
-      return { integrations: [...state.integrations, newInt] };
+      return { integrations: [...list, newInt] };
     }),
 
   removeIntegration: async (id: string) => {
     try {
       await disconnectIntegration(id);
-      set((state) => ({
-        integrations: state.integrations.filter((item) => item.id !== id),
-      }));
+      set((state) => {
+        const list = Array.isArray(state.integrations) ? state.integrations : [];
+        return {
+          integrations: list.filter((item) => item.id !== id),
+        };
+      });
       toast.success('Account disconnected successfully');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to disconnect account';
@@ -73,10 +77,11 @@ export const useIntegrationStore = create<IntegrationState>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const data = await getIntegrations();
-      set({ integrations: data, isLoading: false });
+      const safeData = Array.isArray(data) ? data : [];
+      set({ integrations: safeData, isLoading: false });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to load integrations';
-      set({ error: message, isLoading: false });
+      set({ error: message, integrations: [], isLoading: false });
     }
   },
 

@@ -12,14 +12,14 @@ const startServer = async () => {
     // 1. Ensure the S3/MinIO bucket exists on startup
     await ensureBucketExists();
 
-    // 2. Start background BullMQ workers
-    if (process.env.MOCK_SERVICES !== "true") {
+    // 2. Start background BullMQ workers if enabled
+    if (process.env.ENABLE_WORKERS === "true") {
       startAnalysisWorker();
       startReminderWorker();
       startAutoScanWorker();
       console.log("👷 Background analysis worker, reminder cron worker & auto-scan worker started successfully.");
     } else {
-      console.log("👷 Mock services enabled, background workers initialized inline.");
+      console.log("👷 Async background pipeline initialized in fault-tolerant direct mode.");
     }
 
     // 3. Start Express server
