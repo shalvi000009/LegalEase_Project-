@@ -15,5 +15,5 @@ backend/dist/
 frontend/dist/
 
 # Excluded per project setup (pushed separately)
-frontend/
 frontend.zip
+
