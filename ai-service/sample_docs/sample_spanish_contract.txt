@@ -1,0 +1,41 @@
+El presente contrato de prestación de servicios ("Contrato") se celebra el día 10 de abril de 2025 entre las siguientes partes:
+
+Parte A: Soluciones Legales S.A. de C.V., sociedad mercantil constituida conforme a las leyes de México, con domicilio fiscal en Avenida Reforma 500, Colonia Juárez, Ciudad de México, C.P. 06600.
+
+Parte B: Ingeniero Carlos Rodríguez Martínez, profesional independiente, con domicilio en Calle Madero 120, Colonia Centro, Guadalajara, Jalisco, México.
+
+Cláusula 1: Objeto del contrato
+El Prestador se compromete a desarrollar un sistema de gestión de contratos legales basado en inteligencia artificial para uso interno del Cliente. El sistema incluirá módulos de análisis de riesgo, clasificación automática de cláusulas contractuales, y generación de reportes de cumplimiento normativo.
+
+Cláusula 2: Plazo y vigencia
+El presente Contrato tendrá una vigencia de 18 meses contados a partir de la fecha de firma. Podrá ser renovado por períodos adicionales de 12 meses mediante acuerdo escrito de ambas partes, con al menos 60 días de anticipación a la fecha de vencimiento.
+
+Cláusula 3: Contraprestación y forma de pago
+El Cliente pagará al Prestador la cantidad de $150,000.00 pesos mexicanos mensuales más el Impuesto al Valor Agregado correspondiente. El pago se realizará dentro de los primeros 15 días naturales de cada mes. Los pagos atrasados generarán intereses moratorios a una tasa del 4% mensual sobre el monto vencido. En caso de incumplimiento de pago por más de 60 días, el Prestador podrá dar por terminado el contrato de manera unilateral.
+
+Cláusula 4: Confidencialidad y protección de información
+Ambas partes se obligan a mantener en estricta confidencialidad toda la información técnica, comercial, financiera y estratégica intercambiada durante la vigencia del presente Contrato. Esta obligación permanecerá vigente por un período de 7 años posteriores a la terminación del Contrato. La parte que incumpla esta obligación estará sujeta al pago de una pena convencional de $2,000,000.00 de pesos mexicanos, sin perjuicio de las acciones legales que pudieran corresponder.
+
+Cláusula 5: Propiedad intelectual
+Todos los desarrollos, mejoras, innovaciones y documentación técnica generados por el Prestador en cumplimiento del presente Contrato serán propiedad exclusiva del Cliente. El Prestador cede expresamente todos los derechos patrimoniales de autor sobre dichos desarrollos. El Prestador conservará únicamente el derecho moral de ser reconocido como autor.
+
+Cláusula 6: Limitación de responsabilidad
+La responsabilidad total del Prestador derivada del presente Contrato no excederá en ningún caso el equivalente a los honorarios cobrados durante los últimos 6 meses. El Prestador no será responsable por daños indirectos, consecuenciales, lucro cesante, pérdida de datos o interrupción de actividades comerciales del Cliente.
+
+Cláusula 7: Cláusula de no competencia
+El Prestador se compromete a no prestar servicios similares a competidores directos del Cliente durante la vigencia del Contrato y por un período adicional de 24 meses posteriores a su terminación. Se entenderá como competidor directo cualquier empresa que opere en el sector de servicios legales tecnológicos en México y Latinoamérica.
+
+Cláusula 8: Terminación anticipada
+Cualquiera de las partes podrá dar por terminado anticipadamente el presente Contrato mediante notificación escrita con 45 días naturales de anticipación. En caso de terminación anticipada sin causa justificada, la parte que termine deberá pagar a la otra una penalización equivalente a 4 meses de contraprestación.
+
+Cláusula 9: Resolución de controversias
+Las partes acuerdan que cualquier controversia derivada de la interpretación, cumplimiento o terminación del presente Contrato será resuelta mediante arbitraje comercial administrado por el Centro de Arbitraje de México (CAM). El arbitraje se llevará a cabo en la Ciudad de México y el idioma del procedimiento será el español.
+
+Cláusula 10: Legislación aplicable
+El presente Contrato se regirá e interpretará conforme a las leyes federales de los Estados Unidos Mexicanos. Para todo lo no previsto en este Contrato, las partes se someten a la jurisdicción de los tribunales competentes de la Ciudad de México.
+
+Cláusula 11: Protección de datos personales
+Las partes se comprometen a cumplir con la Ley Federal de Protección de Datos Personales en Posesión de los Particulares y su Reglamento. El tratamiento de datos personales se realizará exclusivamente para los fines establecidos en este Contrato. Cualquier transferencia de datos a terceros requerirá el consentimiento previo y por escrito del titular de los datos.
+
+Cláusula 12: Indemnización
+El Prestador se obliga a indemnizar y mantener en paz y a salvo al Cliente de cualquier reclamación, demanda, pérdida, daño o gasto que surja como consecuencia del incumplimiento de las obligaciones del Prestador bajo el presente Contrato, incluyendo pero no limitándose a honorarios de abogados y costas procesales.

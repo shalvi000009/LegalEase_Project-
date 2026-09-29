@@ -25,6 +25,7 @@ const app = express();
 app.use(
   helmet({
     contentSecurityPolicy: false, // Allows Swagger UI inline resources
+    crossOriginResourcePolicy: { policy: "cross-origin" },
   })
 );
 
@@ -52,12 +53,14 @@ app.use(
         allowedOrigins.includes("*") ||
         /^http:\/\/(localhost|127\.0\.0\.1):(3000|5173|4000)$/.test(origin)
       ) {
-        return callback(null, origin);
+        return callback(null, true);
       }
       // Allow local development origins safely
-      return callback(null, origin);
+      return callback(null, true);
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Requested-With", "Origin"],
     exposedHeaders: ["Content-Disposition"],
   })
 );

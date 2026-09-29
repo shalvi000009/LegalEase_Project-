@@ -4,6 +4,8 @@ import { X, Bot, Trash2, Sparkles } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { useChatStore } from '../../store/chatStore';
 import { useChatStream } from '../../hooks/useChatStream';
+import { useDocumentStore } from '../../store/documentStore';
+import { useVaultStore } from '../../store/vaultStore';
 import { ChatMessage } from './ChatMessage';
 import { StreamingMessage } from './StreamingMessage';
 import { ChatInput } from './ChatInput';
@@ -26,13 +28,26 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { clearSession } = useChatStore();
 
+  const recentDocs = useDocumentStore((state) => state.recentDocuments);
+  const documents = useDocumentStore((state) => state.documents);
+  const vaultContracts = useVaultStore((state) => state.contracts);
+
+  const activeDoc =
+    (docId && (documents.find((d) => d.id === docId) || recentDocs.find((d) => d.id === docId) || vaultContracts.find((c) => c.id === docId))) ||
+    recentDocs[0] ||
+    documents[0] ||
+    vaultContracts[0];
+
+  const activeDocName = activeDoc ? ('filename' in activeDoc ? activeDoc.filename : activeDoc.name) : null;
+  const resolvedDocId = docId || activeDoc?.id || 'general';
+
   const {
     messages,
     sendMessage,
     isStreaming,
     streamingContent,
     cancel,
-  } = useChatStream(docId);
+  } = useChatStream(resolvedDocId);
 
   // Auto-scroll to bottom on new messages or streaming tokens
   useEffect(() => {
@@ -72,7 +87,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   Ask AI Assistant
                   <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                 </h2>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">RAG Legal Contract Specialist</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[220px]">
+                  {activeDocName ? `Context: ${activeDocName}` : 'RAG Legal Contract Specialist'}
+                </p>
               </div>
             </div>
 
@@ -82,7 +99,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   variant="ghost"
                   size="xs"
                   title="Clear conversation history"
-                  onClick={() => docId && clearSession(docId)}
+                  onClick={() => clearSession(resolvedDocId)}
                   className="text-slate-400 hover:text-rose-500"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -132,7 +149,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
           {/* Bottom Fixed Input */}
           <ChatInput
             onSend={sendMessage}
-            disabled={isStreaming || !docId}
+            isLoading={isStreaming}
+            disabled={isStreaming}
+            placeholder={activeDocName ? `Ask about ${activeDocName}...` : "Ask anything about your contract..."}
           />
         </motion.div>
       </div>

@@ -68,6 +68,10 @@ from extraction.pdf_extractor import (
     is_scanned_pdf,
 )
 
+# Week 11: Multi-language support
+from translation.detector import detect_language
+from translation.translator import translate_to_english
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/internal", tags=["Internal"])
@@ -126,6 +130,19 @@ class ExtractResponse(BaseModel):
     chunk_stats: ChunkStatsModel
     embed_upsert: EmbedUpsertModel
     stubs_active: StubsActiveModel
+    # Week 11: Multi-language support fields
+    original_language: str = Field(
+        "en",
+        description="ISO 639-1 language code of the original document (e.g. 'en', 'hi', 'fr').",
+    )
+    translation_used: bool = Field(
+        False,
+        description="Whether translation to English was performed before processing.",
+    )
+    original_text_excerpt: Optional[str] = Field(
+        None,
+        description="First ~500 chars of the untranslated original text, for reference/debugging.",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -285,10 +302,69 @@ async def extract_document(request: ExtractRequest) -> ExtractResponse:
     )
 
     # ------------------------------------------------------------------
-    # Step 3 — Chunk
+    # Step 2.5 — Week 11: Language Detection + Translation
+    # ------------------------------------------------------------------
+    original_language = "en"
+    translation_used = False
+    original_text_excerpt = None
+    text_for_pipeline = full_text  # Default: use extracted text as-is
+
+    try:
+        lang_result = detect_language(full_text)
+        original_language = lang_result["language_code"]
+        lang_confidence = lang_result["confidence"]
+
+        if lang_result.get("warning"):
+            logger.warning(
+                "Language detection warning for doc_id='%s': %s",
+                doc_id,
+                lang_result["warning"],
+            )
+
+        logger.info(
+            "Language detected for doc_id='%s': code='%s' confidence=%.4f",
+            doc_id,
+            original_language,
+            lang_confidence,
+        )
+
+        if original_language != "en":
+            # Save excerpt of original text before translation
+            original_text_excerpt = full_text[:500]
+
+            # Translate to English
+            translation_result = translate_to_english(full_text, original_language)
+            if translation_result["translation_used"]:
+                text_for_pipeline = translation_result["translated_text"]
+                translation_used = True
+                logger.info(
+                    "Translation to English complete for doc_id='%s': "
+                    "%d→%d chars, model='%s'",
+                    doc_id,
+                    translation_result["total_chars_original"],
+                    translation_result["total_chars_translated"],
+                    translation_result["model_used"],
+                )
+            else:
+                logger.warning(
+                    "Translation skipped for doc_id='%s' (lang='%s'): "
+                    "no translation model available.",
+                    doc_id,
+                    original_language,
+                )
+    except Exception as exc:
+        logger.warning(
+            "Language detection/translation failed for doc_id='%s': %s. "
+            "Proceeding with original text.",
+            doc_id,
+            exc,
+        )
+
+    # ------------------------------------------------------------------
+    # Step 3 — Chunk (using translated text if applicable)
     # ------------------------------------------------------------------
     try:
-        chunks = chunk_text(full_text, doc_id=doc_id)
+        chunks = chunk_text(text_for_pipeline, doc_id=doc_id)
         stats = chunk_stats(chunks)
     except Exception as exc:
         logger.exception("Chunking failed for doc_id='%s'", doc_id)
@@ -321,4 +397,8 @@ async def extract_document(request: ExtractRequest) -> ExtractResponse:
             embeddings=True,        # True until OPENAI_API_KEY set
             pinecone_upsert=True,   # True until PINECONE_API_KEY set
         ),
+        # Week 11: Multi-language support fields
+        original_language=original_language,
+        translation_used=translation_used,
+        original_text_excerpt=original_text_excerpt,
     )

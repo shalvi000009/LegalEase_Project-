@@ -33,6 +33,10 @@ from extraction.pdf_extractor import (
     is_scanned_pdf,
 )
 
+# Week 11: Multi-language support
+from translation.detector import detect_language
+from translation.translator import translate_to_english
+
 logger = logging.getLogger(__name__)
 
 # Router for internal endpoints (e.g. /internal/classify)
@@ -129,6 +133,19 @@ class ClassifyResponse(BaseModel):
         None,
         description="List of top contributing clauses per dimension for explainability.",
     )
+    # Week 11: Multi-language support fields
+    original_language: str = Field(
+        "en",
+        description="ISO 639-1 language code of the original document.",
+    )
+    translation_used: bool = Field(
+        False,
+        description="Whether translation to English was performed before classification.",
+    )
+    original_text_excerpt: Optional[str] = Field(
+        None,
+        description="First ~500 chars of the untranslated original text.",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -219,6 +236,47 @@ async def classify_document_handler(request: ClassifyRequest) -> ClassifyRespons
     ocr_used = doc_data["ocr_used"]
     full_text = doc_data["full_text"]
 
+    # ------------------------------------------------------------------
+    # Week 11: Language Detection + Translation
+    # ------------------------------------------------------------------
+    original_language = "en"
+    translation_used = False
+    original_text_excerpt = None
+
+    try:
+        lang_result = detect_language(full_text)
+        original_language = lang_result["language_code"]
+
+        if lang_result.get("warning"):
+            logger.warning(
+                "Language detection warning for doc_id='%s': %s",
+                doc_id,
+                lang_result["warning"],
+            )
+
+        if original_language != "en":
+            original_text_excerpt = full_text[:500]
+
+            translation_result = translate_to_english(full_text, original_language)
+            if translation_result["translation_used"]:
+                full_text = translation_result["translated_text"]
+                translation_used = True
+                logger.info(
+                    "Classification pipeline: translated '%s' to English for doc_id='%s'",
+                    original_language,
+                    doc_id,
+                )
+                # Re-chunk the translated text
+                chunks = chunk_text(full_text, doc_id=doc_id)
+                chunks = [{"text": c["text"], "chunk_index": c["chunk_index"]} for c in chunks]
+    except Exception as exc:
+        logger.warning(
+            "Language detection/translation failed for doc_id='%s': %s. "
+            "Proceeding with original text.",
+            doc_id,
+            exc,
+        )
+
     if not chunks:
         logger.warning("No chunks generated for doc_id='%s'. Returning empty clauses list.", doc_id)
         return ClassifyResponse(
@@ -231,6 +289,9 @@ async def classify_document_handler(request: ClassifyRequest) -> ClassifyRespons
             ocr_used=ocr_used,
             missing_clauses=[],
             suggested_questions=[],
+            original_language=original_language,
+            translation_used=translation_used,
+            original_text_excerpt=original_text_excerpt,
         )
 
     # 2. Initialize classifier & risk engine (singletons/cached)
@@ -327,6 +388,10 @@ async def classify_document_handler(request: ClassifyRequest) -> ClassifyRespons
         risk_dimensions=risk_dimensions,
         weighted_risk_score=weighted_risk_score,
         dimension_explanations=dimension_explanations,
+        # Week 11: Multi-language support fields
+        original_language=original_language,
+        translation_used=translation_used,
+        original_text_excerpt=original_text_excerpt,
     )
 
 

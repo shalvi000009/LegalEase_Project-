@@ -5,6 +5,7 @@ import { Button } from '../ui/Button';
 interface ChatInputProps {
   onSend: (message: string) => void;
   disabled?: boolean;
+  isLoading?: boolean;
   placeholder?: string;
   maxChars?: number;
 }
@@ -12,6 +13,7 @@ interface ChatInputProps {
 export const ChatInput: React.FC<ChatInputProps> = ({
   onSend,
   disabled = false,
+  isLoading = false,
   placeholder = 'Ask anything about your contract...',
   maxChars = 500,
 }) => {
@@ -34,7 +36,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   const handleSubmit = () => {
-    if (disabled || !text.trim()) return;
+    if (disabled || isLoading || !text.trim()) return;
     onSend(text.trim());
     setText('');
     if (textareaRef.current) {
@@ -54,7 +56,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           onChange={(e) => setText(e.target.value.slice(0, maxChars))}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          disabled={disabled}
+          disabled={disabled || isLoading}
           rows={1}
           className="w-full bg-transparent resize-none border-none focus:outline-none text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 max-h-24 pr-10"
         />
@@ -68,9 +70,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             <Button
               size="xs"
               onClick={handleSubmit}
-              disabled={disabled || !text.trim() || isOverLimit}
+              disabled={disabled || isLoading || !text.trim() || isOverLimit}
               className="rounded-lg px-3"
-              iconRight={disabled ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              iconRight={isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
             >
               <span className="hidden sm:inline">Send</span>
             </Button>

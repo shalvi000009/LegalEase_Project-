@@ -91,7 +91,16 @@ export function useChatStream(docId: string | null) {
             },
             onError: (err: Error) => {
               setError(err.message || 'Stream connection error');
-              finalizeMessage(docId);
+              const currentContent = useChatStore.getState().streamingContent;
+              if (!currentContent.trim()) {
+                addMessage(docId, {
+                  role: 'assistant',
+                  content: "I apologize, I encountered a temporary connection issue while analyzing this request. Please try asking again.",
+                });
+              } else {
+                finalizeMessage(docId);
+              }
+              setIsStreaming(false);
             },
           },
           abortControllerRef.current.signal
@@ -99,7 +108,16 @@ export function useChatStream(docId: string | null) {
       } catch (err: any) {
         if (err.name !== 'AbortError') {
           setError(err.message || 'Failed to send message');
-          finalizeMessage(docId);
+          const currentContent = useChatStore.getState().streamingContent;
+          if (!currentContent.trim()) {
+            addMessage(docId, {
+              role: 'assistant',
+              content: "I apologize, I encountered a temporary connection issue while analyzing this request. Please try asking again.",
+            });
+          } else {
+            finalizeMessage(docId);
+          }
+          setIsStreaming(false);
         }
       }
     },

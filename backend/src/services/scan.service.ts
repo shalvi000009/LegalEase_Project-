@@ -140,11 +140,13 @@ export class ScanService {
       },
     });
 
-    // Enqueue document analysis job
-    await documentAnalysisQueue.add('analyze-document', {
-      documentId: doc.id,
-      s3Key,
-    });
+    // Enqueue document analysis job if queue is initialized
+    if (documentAnalysisQueue) {
+      await documentAnalysisQueue.add('analyze-document', {
+        documentId: doc.id,
+        s3Key,
+      });
+    }
 
     // Send FCM push notification if enabled
     const pref = integration.user?.notification_preference;

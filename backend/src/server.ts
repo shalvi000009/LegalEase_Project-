@@ -5,7 +5,6 @@ import { startReminderWorker } from "./services/reminder.worker";
 import { startAutoScanWorker } from "./services/autoScan.worker";
 
 const PORT = parseInt(process.env.PORT || "4000", 10);
-const HOST = "0.0.0.0";
 
 const startServer = async () => {
   try {
@@ -22,8 +21,8 @@ const startServer = async () => {
       console.log("👷 Async background pipeline initialized in fault-tolerant direct mode.");
     }
 
-    // 3. Start Express server
-    app.listen(PORT, HOST, () => {
+    // 3. Start Express server (supports dual-stack IPv4/IPv6 on all network interfaces)
+    app.listen(PORT, () => {
       console.log(`🚀 LegalEase Backend listening on http://localhost:${PORT}`);
       console.log(`📚 Swagger documentation live at http://localhost:${PORT}/docs`);
       console.log(`❤️  Health check available at http://localhost:${PORT}/health`);

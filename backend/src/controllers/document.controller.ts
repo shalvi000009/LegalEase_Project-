@@ -8,6 +8,7 @@ import { uploadFile, getSignedViewUrl } from "../config/s3";
 import { enqueueAnalysisJob } from "../config/queue";
 import { BadRequestError, NotFoundError } from "../utils/errors";
 import { AuthenticatedRequest } from "../middleware/auth";
+import { generateSmartChatAnswer } from "./chat.controller";
 
 import { emitServerNotification } from "../routes/notification.routes";
 
@@ -318,25 +319,32 @@ export class DocumentController {
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
+      if (typeof (res as any).flushHeaders === "function") {
+        (res as any).flushHeaders();
+      }
 
-      const responseTokens = [
-        `Based on clause analysis for document ${id}, `,
-        "the contract specifies a 30-day notice requirement for termination. ",
-        "The indemnification terms are broad and favors the client. ",
-        "We recommend adding a mutual liability cap.",
-      ];
+      const prompt = message && typeof message === "string" ? message.trim() : "Explain key clauses of this contract";
+      const answerObj = await generateSmartChatAnswer(prompt, id);
+      const fullText = answerObj.text;
 
+      // Stream tokens by word/space
+      const words = fullText.split(/(\s+)/);
       let idx = 0;
       const interval = setInterval(() => {
-        if (idx < responseTokens.length) {
-          res.write(`data: ${JSON.stringify({ token: responseTokens[idx], done: false })}\n\n`);
+        if (idx < words.length) {
+          res.write(`data: ${JSON.stringify({ token: words[idx], done: false })}\n\n`);
           idx++;
         } else {
-          res.write(`data: ${JSON.stringify({ token: "", done: true })}\n\n`);
+          res.write(`data: ${JSON.stringify({ token: "", done: true, sources: answerObj.sources || [] })}\n\n`);
+          res.write("data: [DONE]\n\n");
           clearInterval(interval);
           res.end();
         }
-      }, 150);
+      }, 30);
+
+      req.on("close", () => {
+        clearInterval(interval);
+      });
     } catch (error) {
       next(error);
     }
@@ -379,6 +387,17 @@ export class DocumentController {
         res.end(mockPdf);
         return;
       }
+
+      // Fetch related analysis for the document
+      const analysis = await prisma.analysis.findFirst({
+        where: { document_id: documentId },
+        include: { clauses: true },
+      }) || {
+        created_at: new Date(),
+        overall_risk_score: 50,
+        model_version: "Legal-BERT-v1.0",
+        clauses: [],
+      };
 
       // Fetch related chat sessions and messages for the document
       const chatSessions = await prisma.chatSession.findMany({

@@ -1,5 +1,6 @@
 import { apiClient } from './client';
 import { NotificationPreferences } from '../types/notifications';
+import { useAuthStore } from '../store/authStore';
 
 // MOCK DATA Fallback — TODO: Replace with real API when backend notification-preferences endpoint is fully deployed
 export const MOCK_NOTIFICATION_PREFS: NotificationPreferences = {
@@ -125,8 +126,8 @@ export async function fetchLiveNotifications(): Promise<any[]> {
  * Subscribe to SSE real-time notification stream
  */
 export function subscribeNotificationStream(onMessage: (item: any) => void): () => void {
-  const token = localStorage.getItem('legalease_access_token') || '';
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api/v1';
+  const token = useAuthStore.getState().accessToken || localStorage.getItem('legalease_access_token') || '';
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
   const url = `${baseUrl}/notification-preferences/stream?token=${encodeURIComponent(token)}`;
 
   let es: EventSource | null = null;

@@ -1,5 +1,6 @@
 import { apiClient } from './client';
 import { Message } from '../types/chat';
+import { useAuthStore } from '../store/authStore';
 
 export interface SSECallbacks {
   onOpen?: () => void;
@@ -19,8 +20,8 @@ export async function sendMessageStream(
   signal?: AbortSignal,
   maxRetries = 3
 ): Promise<void> {
-  const token = localStorage.getItem('access_token');
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api/v1';
+  const token = useAuthStore.getState().accessToken || localStorage.getItem('access_token') || '';
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
   let retryCount = 0;
 
@@ -38,7 +39,12 @@ export async function sendMessageStream(
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        let errMsg = `HTTP error! status: ${response.status}`;
+        try {
+          const errJson = await response.json();
+          if (errJson.message) errMsg = errJson.message;
+        } catch {}
+        throw new Error(errMsg);
       }
 
       callbacks.onOpen?.();
@@ -49,6 +55,13 @@ export async function sendMessageStream(
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
+      let isCompleted = false;
+      const finishStream = () => {
+        if (!isCompleted) {
+          isCompleted = true;
+          callbacks.onComplete();
+        }
+      };
 
       while (true) {
         if (signal?.aborted) {
@@ -67,7 +80,7 @@ export async function sendMessageStream(
           if (trimmed.startsWith('data: ')) {
             const dataStr = trimmed.replace('data: ', '').trim();
             if (dataStr === '[DONE]') {
-              callbacks.onComplete();
+              finishStream();
               return true;
             }
 
@@ -78,7 +91,7 @@ export async function sendMessageStream(
                 callbacks.onChunk(tokenText);
               }
               if (parsed.done) {
-                callbacks.onComplete();
+                finishStream();
                 return true;
               }
             } catch {
@@ -91,7 +104,7 @@ export async function sendMessageStream(
         }
       }
 
-      callbacks.onComplete();
+      finishStream();
       return true;
     } catch (err: any) {
       if (signal?.aborted || err?.name === 'AbortError') {

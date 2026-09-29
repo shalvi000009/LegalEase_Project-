@@ -326,23 +326,55 @@ export async function generateSmartChatAnswer(userPrompt: string, documentId: st
   // 4. Fetch Document & Analysis from Database
   let document: any = null;
   try {
-    document = await prisma.document.findUnique({
-      where: { id: documentId },
-      include: {
-        analyses: {
-          orderBy: { created_at: "desc" },
-          take: 1,
-          include: { clauses: true },
+    if (documentId && documentId !== 'general') {
+      document = await prisma.document.findUnique({
+        where: { id: documentId },
+        include: {
+          analyses: {
+            orderBy: { created_at: "desc" },
+            take: 1,
+            include: { clauses: true },
+          },
         },
-      },
-    });
+      });
+    }
   } catch (dbErr) {
-    // Ignore DB error if fallback needed
+    // Ignore DB error if invalid UUID format
   }
 
-  const docName = document?.filename || "your uploaded contract";
+  // If document was not found by ID or in general mode, check for user's latest uploaded document
+  if (!document) {
+    try {
+      document = await prisma.document.findFirst({
+        orderBy: { created_at: "desc" },
+        include: {
+          analyses: {
+            orderBy: { created_at: "desc" },
+            take: 1,
+            include: { clauses: true },
+          },
+        },
+      });
+    } catch (e) {
+      // Ignore DB error
+    }
+  }
+
+  const docName = document?.filename;
   const analysis = document?.analyses?.[0];
   const clauses: any[] = analysis?.clauses || [];
+
+  // General legal contract guidance library for when no document or clause is matched
+  const GENERAL_LEGAL_GUIDANCE: Record<string, string> = {
+    termination: "In standard commercial and employment agreements, termination rules typically require:\n• Written Notice: 30 to 90 days advance written notice for termination without cause.\n• Cause / Material Breach: Immediate termination upon uncured material breach (typically following a 15 to 30 day cure period).\n• Post-Termination Obligations: Return of confidential materials, payment of accrued fees, and survival of confidentiality & liability terms.",
+    liability: "In contract law, limitation of liability clauses typically establish:\n• Aggregate Liability Cap: Often capped to the total fees paid under the contract in the prior 12 months.\n• Consequential Damages Waiver: Mutual exclusion of lost profits, indirect, punitive, or consequential damages.\n• Carve-Outs: Standard exceptions for gross negligence, willful misconduct, indemnification claims, and confidentiality breaches.",
+    indemnification: "Indemnification clauses allocate third-party risk between parties:\n• Scope: One party agrees to defend, indemnify, and hold harmless the other from third-party lawsuits.\n• Common Triggers: Third-party intellectual property infringement, data breach/confidentiality violations, and gross negligence.\n• Defense Control: The indemnifying party typically manages the legal defense with legal counsel reasonably acceptable to the indemnified party.",
+    non_compete: "Non-compete and restrictive covenants typically encompass:\n• Duration: Commonly enforceable between 6 and 12 months post-engagement depending on jurisdiction.\n• Geographic & Industry Scope: Must be narrowly tailored to protect legitimate business interests without preventing livelihood.\n• Non-Solicitation: Restrictions on soliciting employees, clients, or vendors during and after the contract term.",
+    confidentiality: "Confidentiality & Non-Disclosure provisions establish:\n• Term of Protection: Typically 2 to 5 years from disclosure, with trade secrets protected indefinitely.\n• Standard Exclusions: Publicly available information, previously known data, or independently developed information.\n• Compelled Disclosure: Notice requirement prior to disclosing under subpoena or governmental order.",
+    payment: "Standard commercial payment terms specify:\n• Payment Window: Standard Net 30 days from receipt of a valid undisputed invoice.\n• Late Interest: Typically statutory rate or 1.0% to 1.5% per month on overdue balances.\n• Dispute Rights: Explicit window (e.g., 14 days) to dispute invoice items in good faith prior to payment.",
+    governing_law: "Governing law and dispute resolution clauses define:\n• Applicable Law: Which jurisdiction's statutory and case law governs interpretation.\n• Forum Selection: Which courts or arbitration tribunals (e.g. AAA, JAMS, ICC) have exclusive jurisdiction.\n• Attorney's Fees: Prevailing party clauses awarding legal fees in dispute enforcement.",
+    intellectual_property: "Intellectual property provisions standardly govern:\n• Background IP: Each party retains ownership of pre-existing proprietary technology and know-how.\n• Work Product / Deliverables: Client typically owns deliverables upon full payment of fees.\n• License Rights: Perpetual or term-limited licenses required to use and operate deliverables.",
+  };
 
   // Match legal concepts with typo tolerance
   const patterns = [
@@ -398,7 +430,7 @@ export async function generateSmartChatAnswer(userPrompt: string, documentId: st
         const score = matchingClause.risk_score ?? 50;
         const level = matchingClause.risk_level ? String(matchingClause.risk_level).toUpperCase() : "MEDIUM";
         return {
-          text: `Based on AI analysis of your document "${docName}":\n\n📌 Clause Type: ${item.label}\n⚖️ Risk Level: ${level} (Risk Score: ${score}/100)\n\nExplanation: ${matchingClause.explanation}\n\nExact Excerpt: "${matchingClause.original_text.slice(0, 300)}${matchingClause.original_text.length > 300 ? "..." : ""}"`,
+          text: `Based on AI analysis of "${docName}":\n\n📌 Clause Type: ${item.label}\n⚖️ Risk Level: ${level} (Risk Score: ${score}/100)\n\nExplanation: ${matchingClause.explanation}\n\nExact Excerpt:\n"${matchingClause.original_text.slice(0, 350)}${matchingClause.original_text.length > 350 ? "..." : ""}"`,
           sources: [
             {
               chunk_index: 0,
@@ -407,22 +439,28 @@ export async function generateSmartChatAnswer(userPrompt: string, documentId: st
             },
           ],
         };
-      } else {
+      } else if (docName) {
+        const guidance = GENERAL_LEGAL_GUIDANCE[item.type] || "";
         return {
-          text: `Based on AI analysis of your document "${docName}": No specific ${item.label.toLowerCase()} clause was detected in this contract. Inspect the remaining clause risk cards on your dashboard for full details.`,
+          text: `Based on AI analysis of "${docName}": No specific ${item.label.toLowerCase()} clause was identified in this document.\n\n📖 Legal Guidance:\n${guidance}\n\n💡 Tip: Check the remaining clause risk breakdown cards on your dashboard or upload an updated draft to re-scan.`,
+        };
+      } else {
+        const guidance = GENERAL_LEGAL_GUIDANCE[item.type] || "";
+        return {
+          text: `📖 Legal Guidance on ${item.label}:\n\n${guidance}\n\n💡 Tip: Upload a contract on your LegalEase Dashboard to trigger automatic clause extraction, 0-100 risk scoring, and exact document citations!`,
         };
       }
     }
   }
 
   // 5. Default Domain Fallback for recognized questions
-  if (analysis) {
+  if (analysis && docName) {
     return {
-      text: `Based on AI analysis of "${docName}": The document has an overall risk score of ${analysis.overall_risk_score}/100 with ${clauses.length} identified clause provisions. Ask about specific topics like liability caps, non-compete terms, payment terms, or termination!`,
+      text: `Based on AI analysis of "${docName}": The document has an overall risk score of ${analysis.overall_risk_score}/100 with ${clauses.length} identified clause provisions.\n\nYou can ask me specific questions regarding:\n• Termination notice requirements & penalties\n• Limitation of liability & financial caps\n• Indemnification scope & liabilities\n• Non-compete covenants & duration`,
     };
   }
 
   return {
-    text: `Regarding your query "${userPrompt}": Based on LegalEase AI contract analysis, this document contains standard commercial provisions. Please review your dashboard for clause breakdown and risk scores.`,
+    text: `Hello! I am your LegalEase AI Contract Specialist. I can analyze risk levels, termination notice periods, liability caps, indemnification terms, and non-compete clauses.\n\nAsk me any question about contract provisions, or upload a contract anytime on your Dashboard for instant automated clause extraction and 0-100 risk scoring!`,
   };
 }

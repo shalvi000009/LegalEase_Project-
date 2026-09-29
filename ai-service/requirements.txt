@@ -20,4 +20,6 @@ transformers>=4.30.0
 torch>=2.0.0
 spacy>=3.5.0
 
-
+# Week 11: Multi-language support
+langdetect>=1.0.9
+sentencepiece>=0.1.99

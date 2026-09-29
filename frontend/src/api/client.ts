@@ -2,7 +2,7 @@ import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } fro
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
 
-const BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api/v1';
+const BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -53,10 +53,10 @@ apiClient.interceptors.response.use(
 
     // Antigravity prevention: immediately reject all errors with status >= 400 for auth routes
     if (error.response && error.response.status >= 400) {
-      const isAuthRoute = originalRequest.url?.includes('/auth/login') || originalRequest.url?.includes('/auth/register');
+      const isAuthRoute = originalRequest?.url?.includes('/auth/login') || originalRequest?.url?.includes('/auth/register');
       if (isAuthRoute || error.response.status !== 401) {
         const errorMessage = error.response?.data?.message || error.message || 'An unexpected error occurred';
-        toast.error(errorMessage);
+        toast.error(errorMessage, { id: errorMessage });
         return Promise.reject(error);
       }
     }
@@ -108,11 +108,13 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // Generic error toast
-    const errorMessage = error.response?.data?.message || error.message || 'An unexpected error occurred';
-    // Avoid double toast if request was refresh attempts
-    if (!originalRequest.url?.includes('/auth/refresh')) {
-      toast.error(errorMessage);
+    // Generic error toast with deduplication ID
+    const errorMessage = error.response?.data?.message || (error.code === 'ERR_NETWORK' || error.message === 'Network Error' ? 'Network connection error. Reconnecting to LegalEase server...' : error.message) || 'An unexpected error occurred';
+    
+    // Avoid toasts on refresh attempts or silent background notification sync
+    const isBackgroundSync = originalRequest?.url?.includes('/auth/refresh') || originalRequest?.url?.includes('/notification-preferences');
+    if (!isBackgroundSync) {
+      toast.error(errorMessage, { id: errorMessage });
     }
 
     return Promise.reject(error);

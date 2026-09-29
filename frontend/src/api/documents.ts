@@ -1,6 +1,7 @@
 import { AxiosProgressEvent } from 'axios';
 import { apiClient } from './client';
 import { Document, DocumentStatusResponse, UploadResponse } from '../types/document';
+import { useAuthStore } from '../store/authStore';
 
 /**
  * Upload contract document (PDF, PNG, JPG up to 10MB)
@@ -173,8 +174,8 @@ export async function sendChatMessageSSE(
   onChunk: (token: string) => void,
   onComplete: () => void
 ): Promise<void> {
-  const token = localStorage.getItem('access_token');
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api/v1';
+  const token = useAuthStore.getState().accessToken || localStorage.getItem('access_token') || '';
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
   try {
     const response = await fetch(`${baseUrl}/documents/${docId}/chat`, {

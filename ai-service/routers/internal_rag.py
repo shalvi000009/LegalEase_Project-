@@ -44,6 +44,10 @@ from classification.classifier import ClauseClassifier
 from extraction.prompt_optimizer import compress_text, optimize_rag_prompt
 from routers.internal_classify import _get_document_chunks
 
+# Week 11: Multi-language support
+from translation.detector import detect_language
+from translation.translator import translate_from_english, translate_to_english
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/internal", tags=["RAG & Chat"])
@@ -70,6 +74,22 @@ class RagQueryRequest(BaseModel):
     )
     use_cache: bool = Field(True, description="Whether to check and store in Redis/memory cache")
     s3_key: Optional[str] = Field(None, description="Optional S3/MinIO object key")
+    # Week 11: Reverse translation support
+    respond_in_original_language: bool = Field(
+        False,
+        description=(
+            "If true and the document's original language is not English, "
+            "the generated answer will be translated back to the original language."
+        ),
+    )
+    original_language: Optional[str] = Field(
+        None,
+        description=(
+            "ISO 639-1 code of the document's original language. "
+            "Required for reverse translation. If not provided, "
+            "language will be auto-detected from the document text."
+        ),
+    )
 
 
 class RagQueryResponse(BaseModel):
@@ -83,6 +103,19 @@ class RagQueryResponse(BaseModel):
     latency_ms: float
     model_used: str = "gpt-4o"
     prompt_optimization: Optional[Dict[str, Any]] = None
+    # Week 11: Multi-language support fields
+    original_language: Optional[str] = Field(
+        None,
+        description="ISO 639-1 code of the document's original language.",
+    )
+    answer_language: str = Field(
+        "en",
+        description="Language of the returned answer ('en' or original language code).",
+    )
+    reverse_translated: bool = Field(
+        False,
+        description="Whether the answer was reverse-translated to the original language.",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -268,13 +301,51 @@ async def query_contract_rag(request: RagQueryRequest) -> RagQueryResponse:
     chunks_res = _get_document_chunks(doc_id, request.s3_key)
     if isinstance(chunks_res, dict):
         chunks = chunks_res.get("chunks", [])
+        full_text = chunks_res.get("full_text", "")
     elif isinstance(chunks_res, list):
         chunks = chunks_res
+        full_text = ""
     else:
         chunks = []
+        full_text = ""
 
     if not chunks:
         raise HTTPException(status_code=404, detail=f"No document text or chunks found for doc_id='{doc_id}'.")
+
+    # ------------------------------------------------------------------
+    # Week 11: Language Detection + Translation for RAG
+    # ------------------------------------------------------------------
+    original_language = request.original_language or "en"
+    translation_used_for_rag = False
+
+    if not request.original_language and full_text:
+        try:
+            lang_result = detect_language(full_text)
+            original_language = lang_result["language_code"]
+        except Exception as exc:
+            logger.warning("Language detection failed in RAG for doc_id='%s': %s", doc_id, exc)
+
+    # If document is not English and we have full text, translate chunks
+    if original_language != "en" and full_text:
+        try:
+            translation_result = translate_to_english(full_text, original_language)
+            if translation_result["translation_used"]:
+                # Re-chunk the translated text
+                from extraction.chunker import chunk_text
+                translated_chunks = chunk_text(translation_result["translated_text"], doc_id=doc_id)
+                chunks = translated_chunks
+                translation_used_for_rag = True
+                logger.info(
+                    "RAG pipeline: translated '%s' to English for doc_id='%s'",
+                    original_language,
+                    doc_id,
+                )
+        except Exception as exc:
+            logger.warning(
+                "Translation failed in RAG for doc_id='%s': %s. Using original chunks.",
+                doc_id,
+                exc,
+            )
 
     # 4. Rank and select top_k relevant chunks
     ranked_sources = _rank_chunks_for_query(query, chunks, top_k=request.top_k)
@@ -284,6 +355,34 @@ async def query_contract_rag(request: RagQueryRequest) -> RagQueryResponse:
 
     # 6. Generate answer
     answer = _generate_grounded_answer(query, ranked_sources)
+
+    # ------------------------------------------------------------------
+    # Week 11: Reverse translation of the answer
+    # ------------------------------------------------------------------
+    answer_language = "en"
+    reverse_translated = False
+
+    if (
+        request.respond_in_original_language
+        and original_language != "en"
+    ):
+        try:
+            reverse_result = translate_from_english(answer, original_language)
+            if reverse_result["translation_used"]:
+                answer = reverse_result["translated_text"]
+                answer_language = original_language
+                reverse_translated = True
+                logger.info(
+                    "RAG answer reverse-translated to '%s' for doc_id='%s'",
+                    original_language,
+                    doc_id,
+                )
+        except Exception as exc:
+            logger.warning(
+                "Reverse translation failed for doc_id='%s': %s. Returning English answer.",
+                doc_id,
+                exc,
+            )
 
     sources_out = [
         RagSource(
@@ -319,4 +418,8 @@ async def query_contract_rag(request: RagQueryRequest) -> RagQueryResponse:
         latency_ms=round(latency_ms, 2),
         model_used="gpt-4o",
         prompt_optimization=telemetry,
+        # Week 11 fields
+        original_language=original_language,
+        answer_language=answer_language,
+        reverse_translated=reverse_translated,
     )
