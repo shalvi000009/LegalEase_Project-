@@ -75,13 +75,15 @@ export class AnalysisController {
         analysis.risk_dimensions ||
         calculateAggregatedRiskDimensions(formattedClauses);
 
-      // 3. Return the overall score, risk_dimensions, and the extracted clauses list
+      // 3. Return the overall score, risk_dimensions, multi-language info, and the extracted clauses list
       res.status(200).json({
         document_id: documentId,
         status: document.status,
         overall_risk_score: analysis.overall_risk_score,
         model_version: analysis.model_version,
         risk_dimensions: riskDimensions,
+        original_language: analysis.original_language || "en",
+        translation_used: analysis.translation_used ?? false,
         created_at: analysis.created_at,
         clauses: formattedClauses,
       });

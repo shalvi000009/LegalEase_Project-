@@ -53,7 +53,21 @@ const options: swaggerJsdoc.Options = {
             id: { type: "string", format: "uuid", example: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11" },
             name: { type: "string", example: "Jane Doe" },
             email: { type: "string", format: "email", example: "jane.doe@example.com" },
+            preferred_output_language: { type: "string", nullable: true, example: "hi" },
             created_at: { type: "string", format: "date-time", example: "2026-07-20T18:00:00.000Z" },
+          },
+        },
+        AnalysisResponse: {
+          type: "object",
+          properties: {
+            document_id: { type: "string", format: "uuid", example: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11" },
+            status: { type: "string", example: "done" },
+            overall_risk_score: { type: "integer", example: 45 },
+            model_version: { type: "string", example: "legal-bert-v1.0.0" },
+            original_language: { type: "string", example: "hi" },
+            translation_used: { type: "boolean", example: true },
+            created_at: { type: "string", format: "date-time" },
+            clauses: { type: "array", items: { type: "object" } },
           },
         },
         AuthSuccessResponse: {

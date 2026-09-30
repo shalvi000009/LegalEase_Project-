@@ -46,6 +46,8 @@ export const startAnalysisWorker = (): Worker => {
         let overallScore = 50;
         let modelVersion = "legal-bert-v1.0.0";
         let clauses: any[] = [];
+        let originalLanguage = "en";
+        let translationUsed = false;
 
         try {
           const aiResponse = await fetch(`${AI_SERVICE_URL}/api/v1/analyze`, {
@@ -65,6 +67,8 @@ export const startAnalysisWorker = (): Worker => {
             overallScore = aiData.overall_risk_score ?? 50;
             modelVersion = aiData.model_version ?? "legal-bert-v1.0.0";
             clauses = aiData.clauses ?? [];
+            originalLanguage = aiData.original_language ?? "en";
+            translationUsed = aiData.translation_used ?? false;
           } else {
             throw new Error(`AI service status ${aiResponse.status}`);
           }
@@ -102,6 +106,8 @@ export const startAnalysisWorker = (): Worker => {
             overall_risk_score: weightedOverallScore || overallScore,
             model_version: modelVersion,
             risk_dimensions: riskDimensions as any,
+            original_language: originalLanguage,
+            translation_used: translationUsed,
           },
         });
 

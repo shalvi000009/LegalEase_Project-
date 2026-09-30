@@ -120,6 +120,8 @@ export interface AnalysisResult {
   red_flags: Clause[];
   missing_clauses: string[];
   suggested_questions: string[];
+  original_language?: string;
+  translation_used?: boolean;
   processing_time_ms: number;
   created_at: string;
   page_count?: number;

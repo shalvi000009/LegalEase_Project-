@@ -171,6 +171,8 @@ export async function getDocumentAnalysis(docId: string): Promise<AnalysisResult
     risk_level: overallLevel,
     risk_dimensions: riskDimensions,
     summary: analysisData.summary || 'Document analysis completed successfully.',
+    original_language: analysisData.original_language || data.original_language || 'en',
+    translation_used: analysisData.translation_used ?? data.translation_used ?? false,
     key_obligations: analysisData.key_obligations || [],
     other_obligations: analysisData.other_obligations || [],
     red_flags: transformedClauses,

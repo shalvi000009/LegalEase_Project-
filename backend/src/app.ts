@@ -120,8 +120,11 @@ app.get("/docs/openapi.json", (_req, res) => {
 // Swagger UI live documentation endpoint
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+import userRoutes from "./routes/user.routes";
+
 // API Routes with rate limiters applied
 app.use("/api/v1/auth", authLimiter, authRoutes);
+app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/documents", documentRoutes);
 app.use("/api/v1/documents", analysisRoutes);
 app.use("/api/v1/documents", dateRoutes);

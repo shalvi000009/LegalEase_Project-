@@ -1,8 +1,24 @@
 import React, { useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, RefreshCw, AlertCircle, Sparkles, Share2 } from 'lucide-react';
+import { ArrowLeft, RefreshCw, AlertCircle, Sparkles, Share2, Globe } from 'lucide-react';
 import { MainLayout } from '../components/layout/MainLayout';
+
+const LANGUAGE_NAMES: Record<string, string> = {
+  hi: 'Hindi',
+  gu: 'Gujarati',
+  fr: 'French',
+  es: 'Spanish',
+  de: 'German',
+  pt: 'Portuguese',
+  zh: 'Chinese',
+  ja: 'Japanese',
+  ar: 'Arabic',
+  mr: 'Marathi',
+  ta: 'Tamil',
+  te: 'Telugu',
+  bn: 'Bengali',
+};
 import { Button } from '../components/ui/Button';
 import { useDocumentAnalysis } from '../hooks/useDocumentAnalysis';
 import { ResizablePanels } from '../components/layout/ResizablePanels';
@@ -168,6 +184,14 @@ export const ResultsPage: React.FC = () => {
             <h1 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate max-w-xs sm:max-w-md">
               {analysis.filename || 'Contract_Analysis.pdf'}
             </h1>
+            {analysis.translation_used && (
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 text-xs font-semibold shadow-xs">
+                <Globe className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
+                <span>
+                  Detected language: <strong>{LANGUAGE_NAMES[analysis.original_language || ''] || (analysis.original_language || 'Non-English').toUpperCase()}</strong> → Translated to English for analysis
+                </span>
+              </div>
+            )}
           </div>
 
           {/* View Mode Tabs (Split, Document, Analysis) */}

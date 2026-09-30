@@ -12,6 +12,9 @@ import { ChatInput } from './ChatInput';
 import { SuggestedQuestions } from './SuggestedQuestions';
 import { ChatEmptyState } from './ChatEmptyState';
 
+import { useAnalysisStore } from '../../store/analysisStore';
+import { LanguagePreferenceToggle } from '../common/LanguagePreferenceToggle';
+
 interface ChatSidebarProps {
   docId: string | null;
   isOpen: boolean;
@@ -27,6 +30,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { clearSession } = useChatStore();
+  const currentAnalysis = useAnalysisStore((state) => state.currentAnalysis);
 
   const recentDocs = useDocumentStore((state) => state.recentDocuments);
   const documents = useDocumentStore((state) => state.documents);
@@ -115,6 +119,13 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
               </Button>
             </div>
           </div>
+
+          {/* Multi-Language Preference Toggle */}
+          {currentAnalysis?.translation_used && (
+            <div className="px-4 pt-3">
+              <LanguagePreferenceToggle originalLanguage={currentAnalysis.original_language} />
+            </div>
+          )}
 
           {/* Quick Suggestions Header */}
           {messages.length > 0 && (

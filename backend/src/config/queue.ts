@@ -61,6 +61,8 @@ export const processDocumentJobReal = async (documentId: string, s3Key: string):
     const clauses = aiData.clauses ?? [];
     const riskDimensions = aiData.risk_dimensions || null;
     const weightedOverallScore = aiData.weighted_risk_score || overallScore;
+    const originalLanguage = aiData.original_language ?? "en";
+    const translationUsed = aiData.translation_used ?? false;
 
     const preparedClauses = clauses.map((c: any) => ({
       analysis_id: "",
@@ -78,6 +80,8 @@ export const processDocumentJobReal = async (documentId: string, s3Key: string):
         overall_risk_score: weightedOverallScore,
         model_version: modelVersion,
         risk_dimensions: riskDimensions as any,
+        original_language: originalLanguage,
+        translation_used: translationUsed,
       },
     });
 
