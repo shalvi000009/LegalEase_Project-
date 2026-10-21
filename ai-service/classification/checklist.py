@@ -132,14 +132,31 @@ def call_gpt_4o_analysis(
         logger.info("[CACHE HIT] Returning cached GPT-4o checklist analysis for key=%s", cache_key)
         return cached_result
 
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key or "your_openai_api_key_here" in api_key or not api_key.startswith("sk-"):
-        logger.debug("Valid OpenAI API Key not found; skipping GPT-4o analysis.")
+    groq_key = os.getenv("GROQ_API_KEY")
+    openai_key = os.getenv("OPENAI_API_KEY")
+
+    client = None
+    model_name = "gpt-4o"
+
+    if groq_key and groq_key.startswith("gsk_"):
+        try:
+            client = OpenAI(api_key=groq_key, base_url="https://api.groq.com/openai/v1")
+            model_name = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+        except Exception as exc:
+            logger.warning("Groq client initialization failed for checklist: %s", exc)
+    elif openai_key and openai_key.startswith("sk-") and not openai_key.startswith("your_"):
+        try:
+            client = OpenAI(api_key=openai_key)
+            model_name = "gpt-4o"
+        except Exception as exc:
+            logger.warning("OpenAI client initialization failed for checklist: %s", exc)
+
+    if not client:
+        logger.debug("Valid Groq or OpenAI API Key not found; skipping LLM checklist analysis.")
         return {}
 
-    logger.info("Calling OpenAI GPT-4o for missing clauses and suggested questions...")
+    logger.info("Calling %s for missing clauses and suggested questions...", model_name)
     try:
-        client = OpenAI(api_key=api_key)
         clauses_summary = []
         for c in classified_clauses:
             clauses_summary.append(
@@ -167,7 +184,7 @@ Provide the response in raw JSON format with the following keys:
 }}
 """
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model=model_name,
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": "You are a legal contract analyzer. You must output raw JSON only."},

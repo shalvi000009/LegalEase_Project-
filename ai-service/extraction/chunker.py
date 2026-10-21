@@ -93,6 +93,8 @@ def chunk_text(
         logger.warning("chunk_text received empty text; returning empty list.")
         return []
 
+    import re
+
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
@@ -100,7 +102,20 @@ def chunk_text(
         add_start_index=True,   # adds 'start_index' to LangChain Document metadata
     )
 
-    documents = splitter.create_documents([text])
+    # Check for distinct numbered legal clauses (e.g. "\n1. SCOPE", "\n2. PAYMENT", "\nSECTION 1")
+    section_regex = re.compile(r"\n+(?=(?:\d+\.|\bSECTION\s+\d+|\bARTICLE\s+\d+)\s+[A-Z])", re.MULTILINE)
+    raw_sections = [s.strip() for s in section_regex.split(text) if s and s.strip()]
+
+    documents = []
+    if len(raw_sections) >= 2:
+        for sec in raw_sections:
+            if len(sec) <= chunk_size:
+                from langchain_core.documents import Document as LcDocument
+                documents.append(LcDocument(page_content=sec, metadata={"start_index": 0}))
+            else:
+                documents.extend(splitter.create_documents([sec]))
+    else:
+        documents = splitter.create_documents([text])
 
     chunks: List[Dict[str, Any]] = []
     for idx, doc in enumerate(documents):

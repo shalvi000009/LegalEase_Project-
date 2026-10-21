@@ -22,10 +22,22 @@ const startServer = async () => {
     }
 
     // 3. Start Express server (supports dual-stack IPv4/IPv6 on all network interfaces)
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`🚀 LegalEase Backend listening on http://localhost:${PORT}`);
       console.log(`📚 Swagger documentation live at http://localhost:${PORT}/docs`);
       console.log(`❤️  Health check available at http://localhost:${PORT}/health`);
+    });
+
+    server.on("error", (err: NodeJS.ErrnoException) => {
+      if (err.code === "EADDRINUSE") {
+        console.error(`\n❌ Error: Port ${PORT} is already in use by another running process.`);
+        console.error(`💡 To free port ${PORT}, run this command in your terminal:`);
+        console.error(`   kill -9 $(lsof -ti :${PORT})\n`);
+        process.exit(1);
+      } else {
+        console.error("FATAL server error:", err);
+        process.exit(1);
+      }
     });
   } catch (error) {
     console.error("FATAL: Failed to start server:", error);

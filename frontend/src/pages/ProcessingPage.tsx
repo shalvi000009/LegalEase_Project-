@@ -92,9 +92,12 @@ export const ProcessingPage: React.FC = () => {
 
   // Simulated progression synchronized with polling status
   useEffect(() => {
+    if (polledStatus === 'failed') return;
+
     const timer = setInterval(() => {
       setCurrentStepIndex((prev) => {
-        if (prev < STEPS.length - 1) {
+        // Stop progression at Step 4 (Analyzing risks) until backend reports 'completed'
+        if (prev < STEPS.length - 2) {
           return prev + 1;
         }
         return prev;
@@ -102,11 +105,12 @@ export const ProcessingPage: React.FC = () => {
     }, 1800);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [polledStatus]);
 
   // Handle final completion & confetti redirection
   useEffect(() => {
-    if (currentStepIndex === STEPS.length - 1 || polledStatus === 'completed') {
+    if (polledStatus === 'completed') {
+      setCurrentStepIndex(STEPS.length - 1);
       setShowConfetti(true);
 
       // Pre-fetch analysis into Zustand store
@@ -114,13 +118,14 @@ export const ProcessingPage: React.FC = () => {
 
       const redirectTimer = setTimeout(() => {
         navigate(`/documents/${docId}/results`);
-      }, 1600);
+      }, 1400);
 
       return () => clearTimeout(redirectTimer);
     }
-  }, [currentStepIndex, polledStatus, docId, navigate, fetchAnalysis]);
+  }, [polledStatus, docId, navigate, fetchAnalysis]);
 
   const getStepStatus = (stepIdx: number): StepStatus => {
+    if (polledStatus === 'failed') return 'pending';
     if (stepIdx < currentStepIndex) return 'completed';
     if (stepIdx === currentStepIndex) return 'active';
     return 'pending';
@@ -129,6 +134,55 @@ export const ProcessingPage: React.FC = () => {
   const handleCancel = () => {
     navigate('/upload');
   };
+
+  if (polledStatus === 'failed') {
+    return (
+      <div className="min-h-screen relative overflow-hidden bg-slate-950 text-slate-100 flex flex-col justify-between p-4 sm:p-8 select-none">
+        <header className="relative z-10 max-w-4xl mx-auto w-full flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+              <Shield className="w-5 h-5 text-white" />
+            </div>
+            <span className="font-extrabold text-lg tracking-tight text-white">
+              Legal<span className="text-indigo-400">Ease</span>
+            </span>
+          </div>
+        </header>
+
+        <main className="relative z-10 max-w-lg mx-auto w-full my-auto py-8">
+          <div className="bg-slate-900/90 backdrop-blur-xl border border-rose-800/60 rounded-3xl p-8 shadow-2xl text-center space-y-5">
+            <div className="w-16 h-16 rounded-2xl bg-rose-950/70 text-rose-400 flex items-center justify-center mx-auto border border-rose-800/50">
+              <Scale className="w-8 h-8" />
+            </div>
+            <h2 className="text-2xl font-black text-white">Document Processing Failed</h2>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              We couldn't extract legal contract clauses from this document. Please ensure the file is an uncorrupted PDF or high-resolution contract image.
+            </p>
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Button
+                variant="primary"
+                onClick={() => navigate('/upload')}
+                className="w-full sm:w-auto"
+              >
+                Upload Another Contract
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => navigate('/documents')}
+                className="w-full sm:w-auto text-slate-400"
+              >
+                Go to Documents
+              </Button>
+            </div>
+          </div>
+        </main>
+
+        <footer className="relative z-10 max-w-4xl mx-auto w-full text-center text-xs text-slate-500">
+          LegalEase Contract Intelligence Platform &copy; 2026
+        </footer>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-slate-950 text-slate-100 flex flex-col justify-between p-4 sm:p-8 select-none">

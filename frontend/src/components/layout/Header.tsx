@@ -68,8 +68,9 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         { label: 'Overview', href: path },
       ];
     }
-    if (path === '/vault') return [{ label: 'Dashboard', href: '/dashboard' }, { label: 'Contract Vault', href: '/vault' }];
-    if (path === '/settings') return [{ label: 'Dashboard', href: '/dashboard' }, { label: 'Settings', href: '/settings' }];
+    if (path === '/vault' || path.startsWith('/vault/')) return [{ label: 'Dashboard', href: '/dashboard' }, { label: 'Contract Vault', href: '/vault' }];
+    if (path === '/integrations') return [{ label: 'Dashboard', href: '/dashboard' }, { label: 'Integrations', href: '/integrations' }];
+    if (path === '/settings' || path.startsWith('/settings/')) return [{ label: 'Dashboard', href: '/dashboard' }, { label: 'Settings', href: '/settings' }];
     return [{ label: 'LegalEase', href: '/dashboard' }];
   };
 
@@ -79,7 +80,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
     markAsRead(item.id);
     setNoticeDropdownOpen(false);
     if (item.contractId) {
-      navigate(`/documents/${item.contractId}`);
+      navigate(`/documents/${item.contractId}/results`);
     } else {
       navigate('/vault');
     }

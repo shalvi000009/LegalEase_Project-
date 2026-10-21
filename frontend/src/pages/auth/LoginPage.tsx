@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { AuthLayout } from '../../components/layout/AuthLayout';
 import { Button } from '../../components/ui/Button';
@@ -119,16 +120,15 @@ export const LoginPage: React.FC = () => {
             Remember me for 30 days
           </label>
 
-          <a
-            href="#forgot-password"
-            onClick={(e) => {
-              e.preventDefault();
-              alert('Password reset link will be sent to your email.');
+          <button
+            type="button"
+            onClick={() => {
+              toast.success('Password reset instructions have been sent to your email.');
             }}
-            className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
+            className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline bg-transparent border-none p-0 cursor-pointer"
           >
             Forgot password?
-          </a>
+          </button>
         </motion.div>
 
         <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>

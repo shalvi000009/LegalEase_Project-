@@ -157,7 +157,7 @@ def _get_document_chunks(doc_id: str, s3_key: Optional[str]) -> Dict[str, Any]:
     Fetches the document text from local uploaded files or sample fallback and splits it into chunks.
     Also returns whether OCR was used and the full extracted text.
     """
-    local_path = resolve_document_file(s3_key, default_filename="sample_contract.pdf")
+    local_path = resolve_document_file(s3_key=s3_key, default_filename="sample_contract.pdf", doc_id=doc_id)
 
     # 2. Extract text based on file extension
     suffix = local_path.suffix.lower()

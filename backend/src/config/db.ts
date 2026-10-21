@@ -75,18 +75,91 @@ class MockPrisma {
       this.documents.push(doc);
       return doc;
     },
-    findUnique: async ({ where }: any) => {
-      return this.documents.find(d => d.id === where.id || d.shareToken === where.shareToken) || null;
+    findUnique: async ({ where, include }: any) => {
+      const d = this.documents.find(item => item.id === where.id || item.shareToken === where.shareToken);
+      if (!d) return null;
+      const copy = { ...d };
+      if (include?.analyses) {
+        let anList = this.analyses.filter(a => a.document_id === d.id);
+        if (include.analyses.orderBy?.created_at === "desc") {
+          anList.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        }
+        if (include.analyses.take) {
+          anList = anList.slice(0, include.analyses.take);
+        }
+        copy.analyses = anList.map(a => {
+          const aCopy = { ...a };
+          if (include.analyses.include?.clauses) {
+            aCopy.clauses = this.clauses.filter(c => c.analysis_id === a.id);
+          }
+          return aCopy;
+        });
+      }
+      return copy;
     },
-    findFirst: async ({ where }: any) => {
-      return this.documents.find(d => d.id === where.id && d.user_id === where.user_id) || null;
+    findFirst: async ({ where, include, orderBy }: any) => {
+      let filtered = this.documents.filter(d => (!where?.id || d.id === where.id) && (!where?.user_id || d.user_id === where.user_id));
+      if (orderBy?.created_at === "desc") {
+        filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      }
+      const d = filtered[0];
+      if (!d) return null;
+      const copy = { ...d };
+      if (include?.analyses) {
+        let anList = this.analyses.filter(a => a.document_id === d.id);
+        if (include.analyses.orderBy?.created_at === "desc") {
+          anList.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        }
+        if (include.analyses.take) {
+          anList = anList.slice(0, include.analyses.take);
+        }
+        copy.analyses = anList.map(a => {
+          const aCopy = { ...a };
+          if (include.analyses.include?.clauses) {
+            aCopy.clauses = this.clauses.filter(c => c.analysis_id === a.id);
+          }
+          return aCopy;
+        });
+      }
+      return copy;
     },
-    findMany: async ({ where, skip, take }: any) => {
-      const filtered = this.documents.filter(d => d.user_id === where.user_id);
-      return filtered.slice(skip || 0, (skip || 0) + (take || 10));
+    findMany: async ({ where, skip, take, include, orderBy }: any) => {
+      let filtered = this.documents.filter(d => !where?.user_id || d.user_id === where.user_id);
+      if (where?.filename?.contains) {
+        const query = where.filename.contains.toLowerCase();
+        filtered = filtered.filter(d => d.filename.toLowerCase().includes(query));
+      }
+      if (where?.status) {
+        filtered = filtered.filter(d => d.status === where.status);
+      }
+      if (orderBy?.created_at === "desc") {
+        filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      }
+      const page = filtered.slice(skip || 0, (skip || 0) + (take || 10));
+      return page.map(d => {
+        const copy = { ...d };
+        if (include?.analyses) {
+          copy.analyses = this.analyses.filter(a => a.document_id === d.id).map(a => {
+            const aCopy = { ...a };
+            if (include.analyses.include?.clauses) {
+              aCopy.clauses = this.clauses.filter(c => c.analysis_id === a.id);
+            }
+            return aCopy;
+          });
+        }
+        return copy;
+      });
     },
     count: async ({ where }: any) => {
-      return this.documents.filter(d => d.user_id === where.user_id).length;
+      let filtered = this.documents.filter(d => !where?.user_id || d.user_id === where.user_id);
+      if (where?.filename?.contains) {
+        const query = where.filename.contains.toLowerCase();
+        filtered = filtered.filter(d => d.filename.toLowerCase().includes(query));
+      }
+      if (where?.status) {
+        filtered = filtered.filter(d => d.status === where.status);
+      }
+      return filtered.length;
     },
     update: async ({ where, data }: any) => {
       const doc = this.documents.find(d => d.id === where.id);
@@ -95,6 +168,17 @@ class MockPrisma {
         return doc;
       }
       throw new Error("Document not found");
+    },
+    delete: async ({ where }: any) => {
+      const idx = this.documents.findIndex(d => d.id === where.id);
+      if (idx !== -1) {
+        const removed = this.documents.splice(idx, 1)[0];
+        this.analyses = this.analyses.filter(a => a.document_id !== where.id);
+        this.chatSessions = this.chatSessions.filter(s => s.document_id !== where.id);
+        this.contractDates = this.contractDates.filter(d => d.doc_id !== where.id);
+        return removed;
+      }
+      return null;
     }
   };
 
@@ -105,6 +189,7 @@ class MockPrisma {
         document_id: data.document_id,
         overall_risk_score: data.overall_risk_score,
         model_version: data.model_version,
+        risk_dimensions: data.risk_dimensions || null,
         created_at: new Date(),
       };
       this.analyses.push(a);
@@ -132,6 +217,7 @@ class MockPrisma {
         explanation: c.explanation,
         original_text: c.original_text,
         risk_score: c.risk_score,
+        dimension_contributions: c.dimension_contributions || null,
       }));
       this.clauses.push(...newClauses);
       return { count: newClauses.length };

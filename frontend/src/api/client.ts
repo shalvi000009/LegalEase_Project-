@@ -51,8 +51,12 @@ apiClient.interceptors.response.use(
   async (error: AxiosError<{ message?: string }>) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // Antigravity prevention: immediately reject all errors with status >= 400 for auth routes
-    if (error.response && error.response.status >= 400) {
+    // Ignore toast notification if error is expected polling or suppressed
+    const errorCode = (error.response?.data as any)?.error_code;
+    const isPollingNotReady = errorCode === 'ANALYSIS_NOT_READY';
+    const isSuppressed = (originalRequest as any)?.skipErrorToast || originalRequest?.headers?.['x-skip-error-toast'];
+
+    if (error.response && error.response.status >= 400 && !isPollingNotReady && !isSuppressed) {
       const isAuthRoute = originalRequest?.url?.includes('/auth/login') || originalRequest?.url?.includes('/auth/register');
       if (isAuthRoute || error.response.status !== 401) {
         const errorMessage = error.response?.data?.message || error.message || 'An unexpected error occurred';

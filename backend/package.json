@@ -5,6 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "clean:port": "kill -9 $(lsof -ti:4000) 2>/dev/null || true",
     "build": "tsc",
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",

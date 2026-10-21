@@ -48,12 +48,17 @@ export class ShareController {
         throw new NotFoundError("Analysis results are not ready yet or have failed");
       }
 
+      const riskScore = analysis.overall_risk_score;
+      const summary = `Public contract review report for ${document.filename}. Overall risk evaluated at ${riskScore}/100 with ${analysis.clauses.length} extracted and scored legal clauses.`;
+
       res.status(200).json({
         document_id: documentId,
         filename: document.filename,
         status: document.status,
         overall_risk_score: analysis.overall_risk_score,
         model_version: analysis.model_version,
+        risk_dimensions: analysis.risk_dimensions || null,
+        summary,
         created_at: analysis.created_at,
         clauses: analysis.clauses.map((c: any) => ({
           id: c.id,

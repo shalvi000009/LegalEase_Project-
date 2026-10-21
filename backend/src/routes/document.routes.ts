@@ -126,4 +126,28 @@ router.post("/:id/share", requireAuth, DocumentController.generateShareLink);
  */
 router.post("/:id/chat", requireAuth, DocumentController.streamChatSSE);
 
+/**
+ * @openapi
+ * /api/v1/documents/{id}:
+ *   delete:
+ *     summary: Delete a document and its associated analysis
+ *     tags:
+ *       - Documents
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Document deleted successfully
+ *       404:
+ *         description: Document not found
+ */
+router.delete("/:id", requireAuth, DocumentController.deleteDocument);
+
 export default router;

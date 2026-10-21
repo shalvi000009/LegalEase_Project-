@@ -187,16 +187,33 @@ export class DocumentController {
       const page = parseInt(req.query.page as string, 10) || 1;
       const limit = parseInt(req.query.limit as string, 10) || 10;
       const skip = (page - 1) * limit;
+      const search = (req.query.search as string || "").trim();
+      const statusFilter = (req.query.status as string || "all").trim();
+
+      const whereClause: any = { user_id: reqAuth.user.id };
+      if (search) {
+        whereClause.filename = { contains: search, mode: "insensitive" };
+      }
+      if (statusFilter && statusFilter !== "all") {
+        whereClause.status = statusFilter === "completed" ? "done" : statusFilter;
+      }
 
       const [documents, total] = await Promise.all([
         prisma.document.findMany({
-          where: { user_id: reqAuth.user.id },
+          where: whereClause,
           skip,
           take: limit,
           orderBy: { created_at: "desc" },
+          include: {
+            analyses: {
+              select: { overall_risk_score: true },
+              orderBy: { created_at: "desc" },
+              take: 1,
+            },
+          },
         }),
         prisma.document.count({
-          where: { user_id: reqAuth.user.id },
+          where: whereClause,
         }),
       ]);
 
@@ -205,15 +222,46 @@ export class DocumentController {
           id: doc.id,
           filename: doc.filename,
           s3_key: doc.s3_key,
-          status: doc.status,
+          status: doc.status === "done" ? "completed" : doc.status,
+          riskScore: doc.analyses?.[0]?.overall_risk_score ?? null,
           created_at: doc.created_at,
         })),
         pagination: {
           total,
           page,
           limit,
-          totalPages: Math.ceil(total / limit),
+          totalPages: Math.ceil(total / limit) || 1,
         },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public static async deleteDocument(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const reqAuth = req as AuthenticatedRequest;
+      if (!reqAuth.user) {
+        throw new BadRequestError("User context is missing");
+      }
+
+      const { id } = req.params;
+
+      const document = await prisma.document.findFirst({
+        where: { id, user_id: reqAuth.user.id },
+      });
+
+      if (!document) {
+        throw new NotFoundError("Document not found or access denied");
+      }
+
+      await prisma.document.delete({
+        where: { id },
+      });
+
+      res.status(200).json({
+        message: "Document deleted successfully",
+        id,
       });
     } catch (error) {
       next(error);

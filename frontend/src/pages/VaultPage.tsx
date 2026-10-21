@@ -127,7 +127,7 @@ export const VaultPage: React.FC = () => {
             Export Calendar (.ics)
           </button>
           <button
-            onClick={() => navigate('/documents')}
+            onClick={() => navigate('/upload')}
             className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 transition-all"
           >
             <Plus className="w-4 h-4" />

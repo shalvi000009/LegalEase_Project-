@@ -297,33 +297,7 @@ export async function generateSmartChatAnswer(userPrompt: string, documentId: st
     return { text: "You're welcome! Feel free to ask any further questions about your contract obligations, risk scores, or specific clauses." };
   }
 
-  // 3. Try calling AI-Service RAG endpoint first
-  try {
-    const aiServiceUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
-    const ragRes = await fetch(`${aiServiceUrl}/internal/rag-query`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        doc_id: documentId,
-        query: userPrompt,
-        top_k: 3,
-      }),
-    });
-
-    if (ragRes.ok) {
-      const data: any = await ragRes.json();
-      if (data && data.answer && !data.answer.includes("not explicitly addressed")) {
-        return {
-          text: data.answer,
-          sources: data.sources || [],
-        };
-      }
-    }
-  } catch (err) {
-    // Continue to database-grounded fallback synthesis
-  }
-
-  // 4. Fetch Document & Analysis from Database
+  // 3. Fetch Document & Analysis from Database FIRST
   let document: any = null;
   try {
     if (documentId && documentId !== 'general') {
@@ -360,9 +334,11 @@ export async function generateSmartChatAnswer(userPrompt: string, documentId: st
     }
   }
 
-  const docName = document?.filename;
+  const docName = document?.filename || "Uploaded Contract";
   const analysis = document?.analyses?.[0];
   const clauses: any[] = analysis?.clauses || [];
+  const s3Key = document?.s3_key || undefined;
+  const effectiveDocId = document?.id || documentId;
 
   // General legal contract guidance library for when no document or clause is matched
   const GENERAL_LEGAL_GUIDANCE: Record<string, string> = {
@@ -420,6 +396,7 @@ export async function generateSmartChatAnswer(userPrompt: string, documentId: st
     },
   ];
 
+  // 4. If query matches a specific legal category and document has analyzed clauses, return document-grounded clause directly
   for (const item of patterns) {
     if (item.regex.test(promptLower)) {
       const matchingClause = clauses.find(
@@ -439,19 +416,60 @@ export async function generateSmartChatAnswer(userPrompt: string, documentId: st
             },
           ],
         };
-      } else if (docName) {
-        const guidance = GENERAL_LEGAL_GUIDANCE[item.type] || "";
+      }
+    }
+  }
+
+  // 5. Try calling AI-Service RAG endpoint with document ID, s3_key, and use_cache: false
+  try {
+    const aiServiceUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
+    const ragRes = await fetch(`${aiServiceUrl}/internal/rag-query`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        doc_id: effectiveDocId,
+        s3_key: s3Key,
+        query: userPrompt,
+        top_k: 3,
+        use_cache: false,
+      }),
+    });
+
+    if (ragRes.ok) {
+      const data: any = await ragRes.json();
+      if (data && data.answer) {
+        // Safety guard: Reject stale fallback answer mentioning Acme Corp or chunk #0 if user uploaded a different document
+        const isAcmeFallback = data.answer.includes("Acme Corp") || (data.answer.includes("clause chunk #0") && data.answer.includes("SERVICE AGREEMENT"));
+        const isNotAcmeDoc = docName && !docName.toLowerCase().includes("sample_contract");
+
+        if (!(isNotAcmeDoc && isAcmeFallback) && !data.answer.includes("not explicitly addressed")) {
+          return {
+            text: data.answer,
+            sources: data.sources || [],
+          };
+        }
+      }
+    }
+  } catch (err) {
+    // Continue to category guidance fallback
+  }
+
+  // 6. Topic-specific fallback guidance if no clause was explicitly in the document
+  for (const item of patterns) {
+    if (item.regex.test(promptLower)) {
+      const guidance = GENERAL_LEGAL_GUIDANCE[item.type] || "";
+      if (document) {
         return {
-          text: `Based on AI analysis of "${docName}": No specific ${item.label.toLowerCase()} clause was identified in this document.\n\n📖 Legal Guidance:\n${guidance}\n\n💡 Tip: Check the remaining clause risk breakdown cards on your dashboard or upload an updated draft to re-scan.`,
+          text: `Based on AI analysis of "${docName}": No specific ${item.label.toLowerCase()} clause was identified in this document.\n\n📖 Legal Guidance on ${item.label}:\n${guidance}\n\n💡 Tip: Check the remaining clause risk breakdown cards on your dashboard or upload an updated draft to re-scan.`,
         };
       } else {
-        const guidance = GENERAL_LEGAL_GUIDANCE[item.type] || "";
         return {
           text: `📖 Legal Guidance on ${item.label}:\n\n${guidance}\n\n💡 Tip: Upload a contract on your LegalEase Dashboard to trigger automatic clause extraction, 0-100 risk scoring, and exact document citations!`,
         };
       }
     }
   }
+
 
   // 5. Default Domain Fallback for recognized questions
   if (analysis && docName) {

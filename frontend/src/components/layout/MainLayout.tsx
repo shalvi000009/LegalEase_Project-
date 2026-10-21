@@ -8,14 +8,19 @@ import { usePushNotifications } from '../../hooks/usePushNotifications';
 import { ChatSidebar } from '../chat/ChatSidebar';
 import { useChatStore } from '../../store/chatStore';
 
+import { useLocation } from 'react-router-dom';
+
 interface MainLayoutProps {
   children: React.ReactNode;
 }
 
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+  const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { activeForegroundNotice, clearForegroundNotice } = usePushNotifications();
   const { isChatOpen, setIsChatOpen, currentDocId } = useChatStore();
+
+  const isSpecializedChatRoute = location.pathname.includes('/results') || location.pathname.includes('/chat');
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
@@ -31,11 +36,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           <div className="max-w-7xl mx-auto space-y-6">{children}</div>
         </main>
       </div>
-      <ChatSidebar
-        docId={currentDocId}
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-      />
+      {!isSpecializedChatRoute && (
+        <ChatSidebar
+          docId={currentDocId}
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+        />
+      )}
       <Footer />
     </div>
   );
