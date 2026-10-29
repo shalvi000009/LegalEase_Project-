@@ -115,5 +115,6 @@ const router = Router();
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/:id/analysis", requireAuth, AnalysisController.getAnalysis);
+router.get("/:id", requireAuth, AnalysisController.getAnalysis);
 
 export default router;

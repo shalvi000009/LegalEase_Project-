@@ -5,6 +5,7 @@ __pycache__/
 *.pyc
 .env
 *.log
+timing_log.txt
 .DS_Store
 .ipynb_checkpoints/
 .pytest_cache/

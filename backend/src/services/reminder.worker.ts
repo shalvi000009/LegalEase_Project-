@@ -4,6 +4,7 @@ import { prisma } from "../config/db";
 import { sendReminderEmail } from "./email.service";
 import { sendPushNotification } from "./fcm.service";
 import { sendSmsNotification } from "./twilio.service";
+import { emitServerNotification } from "../routes/notification.routes";
 
 export const REMINDER_QUEUE_NAME = "reminder-notifications";
 const isMock = process.env.MOCK_SERVICES === "true";
@@ -94,6 +95,19 @@ export async function processPendingReminders(): Promise<{ processedCount: numbe
           status: "sent",
           sent_at: new Date(),
         },
+      });
+
+      // Emit real-time in-app bell notification
+      emitServerNotification(user.id, {
+        title: reminder.days_before === 0
+          ? `Contract Expired: ${document.filename}`
+          : `Contract Expiry Alert: ${document.filename}`,
+        body: reminder.days_before === 0
+          ? `Contract "${document.filename}" has expired or is due today.`
+          : `Contract "${document.filename}" deadline is in ${reminder.days_before} day(s).`,
+        contractId: document.id,
+        contractTitle: document.filename,
+        type: "reminder",
       });
 
       successCount++;

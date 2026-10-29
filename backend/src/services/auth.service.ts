@@ -5,10 +5,10 @@ import { prisma } from "../config/db";
 import { ConflictError, UnauthorizedError, InvalidCredentialsError } from "../utils/errors";
 
 const SALT_ROUNDS = 10;
-const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "default_access_secret";
-const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "default_refresh_secret";
-const ACCESS_EXPIRY = process.env.JWT_ACCESS_EXPIRY || "15m";
-const REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY || "7d";
+const getAccessSecret = () => process.env.JWT_ACCESS_SECRET || "default_access_secret";
+const getRefreshSecret = () => process.env.JWT_REFRESH_SECRET || "default_refresh_secret";
+const getAccessExpiry = () => process.env.JWT_ACCESS_EXPIRY || "15m";
+const getRefreshExpiry = () => process.env.JWT_REFRESH_EXPIRY || "7d";
 
 function hashToken(rawToken: string): string {
   return crypto.createHash("sha256").update(rawToken).digest("hex");
@@ -47,14 +47,14 @@ export class AuthService {
   private static generateTokens(userId: string, email: string): AuthTokens {
     const accessToken = jwt.sign(
       { sub: userId, email },
-      ACCESS_SECRET,
-      { expiresIn: ACCESS_EXPIRY as any }
+      getAccessSecret(),
+      { expiresIn: getAccessExpiry() as any }
     );
 
     const refreshToken = jwt.sign(
       { sub: userId, email, jti: crypto.randomUUID() },
-      REFRESH_SECRET,
-      { expiresIn: REFRESH_EXPIRY as any }
+      getRefreshSecret(),
+      { expiresIn: getRefreshExpiry() as any }
     );
 
     return { accessToken, refreshToken };
@@ -62,7 +62,7 @@ export class AuthService {
 
   private static async createRefreshTokenRecord(userId: string, rawRefreshToken: string) {
     const tokenHash = hashToken(rawRefreshToken);
-    const expiresAt = calculateExpiryDate(REFRESH_EXPIRY);
+    const expiresAt = calculateExpiryDate(getRefreshExpiry());
 
     await prisma.refreshToken.create({
       data: {
@@ -131,7 +131,7 @@ export class AuthService {
   public static async refresh(rawRefreshToken: string): Promise<AuthTokens> {
     let payload: any;
     try {
-      payload = jwt.verify(rawRefreshToken, REFRESH_SECRET);
+      payload = jwt.verify(rawRefreshToken, getRefreshSecret());
     } catch {
       throw new UnauthorizedError("Invalid or expired refresh token");
     }

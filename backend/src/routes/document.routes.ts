@@ -88,6 +88,8 @@ router.get("/", requireAuth, DocumentController.listDocuments);
  *       - BearerAuth: []
  */
 router.get("/:id", requireAuth, DocumentController.getDocumentStatus);
+router.get("/:id/status", requireAuth, DocumentController.getDocumentStatus);
+router.get("/:id/stream", DocumentController.streamDocumentStatusSSE);
 router.get("/:id/view", requireAuth, DocumentController.getDocumentViewUrl);
 
 /**

@@ -79,3 +79,17 @@ def test_fine_tuned_clause_classifier():
             correct += 1
 
     assert correct >= 7, f"Expected at least 7 of 8 correct, got {correct}/8"
+
+
+@pytest.mark.skipif(not MODEL_EXISTS, reason=f"Model directory missing at {MODEL_DIR}")
+def test_numbered_heading_clauses():
+    classifier = ClauseClassifier()
+    res1 = classifier.classify_text(
+        "2. PAYMENT TERMS\nClient shall pay Service Provider USD 5,000 per month, due within 30 days of invoice."
+    )
+    assert res1["clause_type"] == "payment_terms"
+
+    res2 = classifier.classify_text(
+        "6. INTELLECTUAL PROPERTY\nAll deliverables created under this Agreement remain the exclusive property of the Client."
+    )
+    assert res2["clause_type"] == "ip_ownership"

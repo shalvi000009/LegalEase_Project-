@@ -44,6 +44,7 @@ export const VaultPage: React.FC = () => {
     isLoading,
     updateContractStatus,
     deleteContract,
+    fetchContracts,
     setFilters,
     resetFilters,
     toggleViewMode,
@@ -68,6 +69,10 @@ export const VaultPage: React.FC = () => {
       setActiveTab('calendar');
     }
   }, [location.pathname]);
+
+  useEffect(() => {
+    fetchContracts();
+  }, [fetchContracts]);
 
   const handleExportICS = async () => {
     try {
@@ -356,7 +361,7 @@ export const VaultPage: React.FC = () => {
         onUpdateDate={(dateId, data) => selectedDocId && updateDate(selectedDocId, dateId, data)}
         onDeleteDate={(dateId) => selectedDocId && deleteDate(selectedDocId, dateId)}
         onAddDate={(newDate) => selectedDocId && addDate(selectedDocId, newDate)}
-        onClose={() => setSelectedDocId(null)}
+        onClose={() => { setSelectedDocId(null); fetchContracts(); }}
         onProceed={() => {
           setSelectedDocId(null);
           navigate(`/results?id=${selectedDocId}`);

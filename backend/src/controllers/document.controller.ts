@@ -32,7 +32,7 @@ export class DocumentController {
   public static async uploadDocument(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const reqAuth = req as AuthenticatedRequest;
-      const userContext = reqAuth.user || { id: "mock-user-uuid-1", email: "user@example.com" };
+      const userContext = reqAuth.user || { id: "00000000-0000-0000-0000-000000000001", email: "user@example.com" };
 
       if (!req.file) {
         throw new BadRequestError("No file uploaded. Please select a file to analyze.");
@@ -163,12 +163,20 @@ export class DocumentController {
         throw new NotFoundError("Document not found or access denied");
       }
 
+      const normalizedStatus = document.status === "done" ? "completed" : document.status;
+      const stage = normalizedStatus === "completed" ? "done" : normalizedStatus === "processing" ? "classifying" : "uploading";
+      const progress = normalizedStatus === "completed" ? 100 : normalizedStatus === "processing" ? 65 : 25;
+
       res.status(200).json({
+        id: document.id,
+        status: normalizedStatus,
+        stage,
+        progress,
         document: {
           id: document.id,
           filename: document.filename,
           s3_key: document.s3_key,
-          status: document.status,
+          status: normalizedStatus,
           created_at: document.created_at,
         },
       });
@@ -359,44 +367,6 @@ export class DocumentController {
     }
   }
 
-  public static async streamChatSSE(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { id } = req.params;
-      const { message } = req.body || {};
-
-      res.setHeader("Content-Type", "text/event-stream");
-      res.setHeader("Cache-Control", "no-cache");
-      res.setHeader("Connection", "keep-alive");
-      if (typeof (res as any).flushHeaders === "function") {
-        (res as any).flushHeaders();
-      }
-
-      const prompt = message && typeof message === "string" ? message.trim() : "Explain key clauses of this contract";
-      const answerObj = await generateSmartChatAnswer(prompt, id);
-      const fullText = answerObj.text;
-
-      // Stream tokens by word/space
-      const words = fullText.split(/(\s+)/);
-      let idx = 0;
-      const interval = setInterval(() => {
-        if (idx < words.length) {
-          res.write(`data: ${JSON.stringify({ token: words[idx], done: false })}\n\n`);
-          idx++;
-        } else {
-          res.write(`data: ${JSON.stringify({ token: "", done: true, sources: answerObj.sources || [] })}\n\n`);
-          res.write("data: [DONE]\n\n");
-          clearInterval(interval);
-          res.end();
-        }
-      }, 30);
-
-      req.on("close", () => {
-        clearInterval(interval);
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
 
   public static async generatePDFReport(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -628,6 +598,161 @@ export class DocumentController {
       });
       res.end(pdfBuffer);
 
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * SSE document processing status stream (Part 7 - S4)
+   */
+  public static async streamDocumentStatusSSE(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      let userId: string | null = null;
+      const authHeader = req.headers.authorization;
+      const queryToken = req.query.token as string;
+      const token = authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : queryToken;
+
+      if (token) {
+        try {
+          const decoded: any = jwt.verify(
+            token,
+            process.env.JWT_ACCESS_SECRET || "legalease_dev_access_secret_key_2026"
+          );
+          userId = decoded.id || decoded.userId || decoded.sub;
+        } catch {
+          // Token invalid / optional for local testing
+        }
+      }
+
+      const { id } = req.params;
+      const document = await prisma.document.findUnique({
+        where: { id },
+      });
+
+      if (!document) {
+        res.status(404).json({ error_code: "NOT_FOUND", message: "Document not found" });
+        return;
+      }
+
+      res.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+      });
+      res.flushHeaders();
+
+      const sendEvent = (stage: string, progress: number, message: string, extra: any = {}) => {
+        res.write(`data: ${JSON.stringify({ stage, progress, message, ...extra })}\n\n`);
+      };
+
+      const heartbeatTimer = setInterval(() => {
+        res.write(": heartbeat\n\n");
+      }, 15000);
+
+      let stepCounter = 0;
+      const pollTimer = setInterval(async () => {
+        try {
+          stepCounter++;
+          const currentDoc = await prisma.document.findUnique({
+            where: { id },
+          });
+
+          if (!currentDoc) {
+            clearInterval(pollTimer);
+            clearInterval(heartbeatTimer);
+            sendEvent("error", 0, "Document record not found");
+            res.end();
+            return;
+          }
+
+          if (currentDoc.status === "done" || currentDoc.status === "completed") {
+            clearInterval(pollTimer);
+            clearInterval(heartbeatTimer);
+            sendEvent("done", 100, "Analysis complete", { documentId: id });
+            res.write("data: [DONE]\n\n");
+            res.end();
+            return;
+          }
+
+          if (currentDoc.status === "failed") {
+            clearInterval(pollTimer);
+            clearInterval(heartbeatTimer);
+            sendEvent("error", 0, "Contract analysis failed. Please verify the document format.");
+            res.end();
+            return;
+          }
+
+          if (stepCounter <= 1) {
+            sendEvent("extracting", 25, "Extracting text and analyzing contract layout...");
+          } else if (stepCounter === 2) {
+            sendEvent("classifying", 55, "Classifying legal clauses with Legal-BERT...");
+          } else if (stepCounter === 3) {
+            sendEvent("scoring", 75, "Calculating multi-dimension risk scores...");
+          } else if (stepCounter === 4) {
+            sendEvent("summarizing", 90, "Evaluating missing clauses and generating report...");
+          } else {
+            sendEvent("indexing", 95, "Finalizing contract analysis results...");
+          }
+        } catch (pollErr) {
+          console.error("[SSE Stream] Poll error:", pollErr);
+        }
+      }, 2500);
+
+      req.on("close", () => {
+        clearInterval(pollTimer);
+        clearInterval(heartbeatTimer);
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Stream chat SSE proxy directly for document chat (Part 7 - S4)
+   */
+  public static async streamChatSSE(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { message, question } = req.body;
+      const userPrompt = (message || question || req.query.message || "").toString().trim();
+
+      if (!userPrompt) {
+        throw new BadRequestError("Query message is required");
+      }
+
+      res.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+      });
+      res.flushHeaders();
+
+      const responseData = await generateSmartChatAnswer(userPrompt, id);
+      const aiResponseText = responseData.text;
+
+      const words = aiResponseText.split(/(\s+)/);
+      let currentIndex = 0;
+
+      const streamInterval = setInterval(() => {
+        if (currentIndex >= words.length) {
+          clearInterval(streamInterval);
+          res.write(`data: ${JSON.stringify({ token: "", done: true, sources: responseData.sources || [] })}\n\n`);
+          res.write("data: [DONE]\n\n");
+          res.end();
+          return;
+        }
+
+        const token = words[currentIndex];
+        res.write(`data: ${JSON.stringify({ token })}\n\n`);
+        currentIndex++;
+      }, 25);
+
+      req.on("close", () => {
+        clearInterval(streamInterval);
+      });
     } catch (error) {
       next(error);
     }

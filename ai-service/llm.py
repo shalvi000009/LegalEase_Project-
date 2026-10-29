@@ -32,7 +32,7 @@ def _call_llm_api(system_prompt: str, user_prompt: str, max_tokens: int = 500) -
     openai_key = os.getenv("OPENAI_API_KEY")
 
     # 1. Try Groq (high-speed free tier)
-    if groq_key and groq_key.startswith("gsk_"):
+    if groq_key and groq_key.startswith("gsk_") and not groq_key.startswith("gsk_your_"):
         try:
             import requests
             model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
@@ -49,21 +49,19 @@ def _call_llm_api(system_prompt: str, user_prompt: str, max_tokens: int = 500) -
                 "max_tokens": max_tokens,
                 "temperature": 0.2,
             }
-            for attempt in range(2):
-                try:
-                    resp = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=25)
-                    if resp.status_code == 200:
-                        content = resp.json().get("choices", [{}])[0].get("message", {}).get("content")
-                        if content and content.strip():
-                            return content.strip()
-                except Exception as attempt_err:
-                    if attempt == 1:
-                        logger.warning("Groq call failed after 2 attempts: %s", attempt_err)
+            try:
+                resp = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=10)
+                if resp.status_code == 200:
+                    content = resp.json().get("choices", [{}])[0].get("message", {}).get("content")
+                    if content and content.strip():
+                        return content.strip()
+            except Exception as attempt_err:
+                logger.warning("Groq call failed: %s", attempt_err)
         except Exception as exc:
             logger.warning("Groq execution failed: %s", exc)
 
     # 2. Try OpenAI
-    if openai_key and openai_key.startswith("sk-") and not openai_key.startswith("your_"):
+    if openai_key and openai_key.startswith("sk-") and not openai_key.startswith("sk-your_"):
         try:
             import requests
             model = os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini")
@@ -80,16 +78,14 @@ def _call_llm_api(system_prompt: str, user_prompt: str, max_tokens: int = 500) -
                 "max_tokens": max_tokens,
                 "temperature": 0.2,
             }
-            for attempt in range(2):
-                try:
-                    resp = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload, timeout=25)
-                    if resp.status_code == 200:
-                        content = resp.json().get("choices", [{}])[0].get("message", {}).get("content")
-                        if content and content.strip():
-                            return content.strip()
-                except Exception as attempt_err:
-                    if attempt == 1:
-                        logger.warning("OpenAI call failed after 2 attempts: %s", attempt_err)
+            try:
+                resp = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload, timeout=10)
+                if resp.status_code == 200:
+                    content = resp.json().get("choices", [{}])[0].get("message", {}).get("content")
+                    if content and content.strip():
+                        return content.strip()
+            except Exception as attempt_err:
+                logger.warning("OpenAI call failed: %s", attempt_err)
         except Exception as exc:
             logger.warning("OpenAI execution failed: %s", exc)
 

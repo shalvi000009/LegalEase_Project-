@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { UnauthorizedError } from "../utils/errors";
 
-const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "default_access_secret";
+const getAccessSecret = () => process.env.JWT_ACCESS_SECRET || "default_access_secret";
 
 interface JWTPayload {
   sub: string;
@@ -26,7 +26,7 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction): vo
   const token = authHeader.split(" ")[1];
 
   try {
-    const decoded = jwt.verify(token, ACCESS_SECRET) as JWTPayload;
+    const decoded = jwt.verify(token, getAccessSecret()) as JWTPayload;
     (req as any).user = {
       id: decoded.sub,
       email: decoded.email,
@@ -49,7 +49,7 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction): vo
 
     if (token.startsWith("mock-") || process.env.MOCK_SERVICES === "true" || process.env.NODE_ENV !== "production") {
       (req as any).user = {
-        id: "mock-user-uuid-1",
+        id: "00000000-0000-0000-0000-000000000001",
         email: "user@example.com",
       };
       return next();

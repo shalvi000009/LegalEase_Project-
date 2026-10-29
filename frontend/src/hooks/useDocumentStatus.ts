@@ -13,7 +13,7 @@ export function useDocumentStatus(docId: string | null, enabled: boolean = true)
   const hasTriggeredCompletion = useRef(false);
 
   // Exponential backoff interval calculation: 3000ms * (2^errorCount), max 30000ms
-  const currentInterval = Math.min(3000 * Math.pow(2, errorCount), 30000);
+  const currentInterval = Math.min(2000 * Math.pow(2, errorCount), 30000);
 
   const query = useQuery({
     queryKey: ['documentStatus', docId],

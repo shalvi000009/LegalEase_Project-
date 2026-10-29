@@ -334,7 +334,7 @@ export class IntegrationService {
         where: { email: { equals: sender.toLowerCase() } },
       });
 
-      const targetUserId = user?.id || (await prisma.user.findFirst())?.id || 'mock-user-uuid-1';
+      const targetUserId = user?.id || (await prisma.user.findFirst())?.id || '00000000-0000-0000-0000-000000000001';
 
       let integration = await prisma.integration.findFirst({
         where: { user_id: targetUserId, provider: IntegrationProvider.inbound_email },

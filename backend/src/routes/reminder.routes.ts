@@ -290,4 +290,91 @@ router.patch("/:id/snooze", requireAuth, async (req: Request, res: Response, nex
   }
 });
 
+/**
+ * @openapi
+ * /api/v1/reminders/test:
+ *   post:
+ *     summary: Trigger a test reminder email and notification
+ *     tags:
+ *       - Dates & Reminders
+ *     security:
+ *       - bearerAuth: []
+ */
+/**
+ * @openapi
+ * /api/v1/reminders/trigger:
+ *   post:
+ *     summary: Trigger manual processing of all due pending reminders
+ *     tags:
+ *       - Dates & Reminders
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post("/trigger", requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { processPendingReminders } = await import("../services/reminder.worker");
+    const result = await processPendingReminders();
+    res.status(200).json({
+      success: true,
+      message: `Processed ${result.processedCount} reminder(s): ${result.successCount} sent, ${result.failureCount} failed.`,
+      result,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @openapi
+ * /api/v1/reminders/test:
+ *   post:
+ *     summary: Trigger a test reminder email and notification
+ *     tags:
+ *       - Dates & Reminders
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post("/test", requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const reqAuth = req as AuthenticatedRequest;
+    if (!reqAuth.user) {
+      throw new BadRequestError("User context missing");
+    }
+
+    const { sendReminderEmail } = await import("../services/email.service");
+    const { processPendingReminders } = await import("../services/reminder.worker");
+    const { emitServerNotification } = await import("../routes/notification.routes");
+    const userEmail = reqAuth.user.email || "developer@legalease.app";
+
+    // 1. Process any pending reminders that are due
+    const batchResult = await processPendingReminders();
+
+    // 2. Send test email to user
+    const emailResult = await sendReminderEmail({
+      to: userEmail,
+      userName: (reqAuth.user as any).name || "LegalEase User",
+      documentTitle: "Sample Master Services Agreement.pdf",
+      dateType: "expiry_date",
+      resolvedDate: new Date(Date.now() + 2 * 86400000),
+      daysBefore: 2,
+    });
+
+    // 3. Emit in-app notification
+    emitServerNotification(reqAuth.user.id, {
+      title: "Contract Expiry Alert: Sample Master Services Agreement.pdf",
+      body: "Contract deadline is in 2 day(s). Action recommended.",
+      type: "reminder",
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Test reminder alert sent to ${userEmail}`,
+      emailResult,
+      batchResult,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

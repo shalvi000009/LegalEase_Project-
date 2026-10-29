@@ -5,13 +5,16 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "worker": "ts-node-dev --transpile-only src/worker.ts",
     "clean:port": "kill -9 $(lsof -ti:4000) 2>/dev/null || true",
     "build": "tsc",
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
-    "test": "jest --passWithNoTests"
+    "test": "jest --passWithNoTests",
+    "test:e2e": "ts-node scripts/e2e.ts",
+    "backfill:dates": "ts-node --transpile-only scripts/backfill_dates.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1101.0",

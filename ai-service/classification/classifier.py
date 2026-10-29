@@ -228,11 +228,23 @@ class ClauseClassifier:
                 self.device = torch.device("mps")
             else:
                 self.device = torch.device("cpu")
+                cpu_threads = os.cpu_count() or 4
+                torch.set_num_threads(cpu_threads)
+                logger.info("Configured PyTorch CPU threads: %d", cpu_threads)
 
             self.tokenizer = AutoTokenizer.from_pretrained(str(self.model_path))
             self.model = AutoModelForSequenceClassification.from_pretrained(str(self.model_path))
             self.model.to(self.device)
             self.model.eval()
+
+            # Warm-up prediction at startup to eliminate first-batch latency
+            try:
+                with torch.no_grad():
+                    warm_inputs = self.tokenizer(["warm-up legal provision text."], padding=True, truncation=True, max_length=128, return_tensors="pt").to(self.device)
+                    self.model(**warm_inputs)
+                logger.info("Classifier warm-up prediction completed successfully.")
+            except Exception as warm_err:
+                logger.warning("Classifier warm-up warning: %s", warm_err)
 
             # Load id2label mapping from model config
             raw_id2label = getattr(self.model.config, "id2label", {})

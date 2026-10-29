@@ -3,6 +3,7 @@ import { ensureBucketExists } from "./config/s3";
 import { startAnalysisWorker } from "./services/analysis.worker";
 import { startReminderWorker } from "./services/reminder.worker";
 import { startAutoScanWorker } from "./services/autoScan.worker";
+import { AiClient } from "./services/aiClient";
 
 const PORT = parseInt(process.env.PORT || "4000", 10);
 
@@ -10,6 +11,9 @@ const startServer = async () => {
   try {
     // 1. Ensure the S3/MinIO bucket exists on startup
     await ensureBucketExists();
+
+    // 2. Perform AI microservice connection handshake
+    await AiClient.checkConnection();
 
     // 2. Start background BullMQ workers if enabled
     if (process.env.ENABLE_WORKERS === "true") {

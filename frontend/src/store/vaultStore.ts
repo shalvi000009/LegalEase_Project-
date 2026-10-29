@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { ContractSummary, ContractStatus } from '../types/dates';
+import { getVaultContracts, updateContractStatusApi } from '../api/dates';
 
 export interface VaultFilters {
   status: ContractStatus | 'all';
@@ -22,6 +23,7 @@ interface VaultState {
   setContracts: (contracts: ContractSummary[]) => void;
   updateContractStatus: (id: string, status: ContractStatus) => void;
   deleteContract: (id: string) => void;
+  fetchContracts: () => Promise<void>;
   setFilters: (filters: Partial<VaultFilters>) => void;
   resetFilters: () => void;
   toggleViewMode: () => void;
@@ -44,30 +46,43 @@ export const useVaultStore = create<VaultState>((set) => ({
 
   setContracts: (contracts) => set({ contracts }),
 
-  updateContractStatus: (id, status) => set((state) => ({
-    contracts: state.contracts.map((c) => {
-      if (c.id === id) {
-        let updatedDays = c.daysRemaining;
-        if (status === 'renewed' && c.status !== 'renewed') {
-          // If marked renewed, set days remaining to positive extension
-          updatedDays = Math.max(c.daysRemaining, 365);
+  updateContractStatus: (id, status) => {
+    updateContractStatusApi(id, status).catch(() => { });
+    set((state) => ({
+      contracts: state.contracts.map((c) => {
+        if (c.id === id) {
+          let updatedDays = c.daysRemaining;
+          if (status === 'renewed' && c.status !== 'renewed') {
+            // If marked renewed, set days remaining to positive extension
+            updatedDays = Math.max(c.daysRemaining, 365);
+          }
+          return { ...c, status, daysRemaining: updatedDays };
         }
-        return { ...c, status, daysRemaining: updatedDays };
-      }
-      return c;
-    }),
-  })),
+        return c;
+      }),
+    }));
+  },
 
   deleteContract: (id) => set((state) => ({
     contracts: state.contracts.filter((c) => c.id !== id),
   })),
 
+  fetchContracts: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const data = await getVaultContracts();
+      set({ contracts: data.contracts || [], isLoading: false });
+    } catch (err: any) {
+      set({ error: err?.message || 'Failed to load vault contracts', isLoading: false });
+    }
+  },
+
   setFilters: (newFilters) => set((state) => ({
     filters: {
       ...state.filters,
       ...newFilters,
-      dateRange: newFilters.dateRange 
-        ? { ...state.filters.dateRange, ...newFilters.dateRange } 
+      dateRange: newFilters.dateRange
+        ? { ...state.filters.dateRange, ...newFilters.dateRange }
         : state.filters.dateRange,
     },
   })),

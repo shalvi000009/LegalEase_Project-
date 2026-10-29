@@ -1,189 +1,344 @@
-# LegalEase: Complete Guide to Run & Open All Service Links
+# LegalEase: Complete Guide to Run on Windows & macOS
 
-This single document contains step-by-step instructions to set up, start, and open all **LegalEase** application services and URLs on both **Windows** and **macOS**.
+This comprehensive guide contains exact, copy-pasteable commands to run every service of the **LegalEase** platform on **Windows** (PowerShell & CMD) and **macOS** (Terminal / zsh / bash).
 
 ---
 
-## 📌 Summary of All Services & Links
+## 📌 Services & Ports Quick Reference
 
-| Service Name | Port | Base URL / Link | Description & Credentials |
-| :--- | :--- | :--- | :--- |
-| **Frontend App** | `3000` | [http://localhost:3000](http://localhost:3000) | Main React Client User Interface |
-| **Backend API** | `4000` | [http://localhost:4000](http://localhost:4000) | Node.js Express REST API Server |
-| **Backend API Docs** | `4000` | [http://localhost:4000/docs](http://localhost:4000/docs) | Interactive Swagger API Documentation |
-| **Backend Health** | `4000` | [http://localhost:4000/health](http://localhost:4000/health) | Backend health status JSON |
-| **AI/ML Microservice** | `8000` | [http://localhost:8000](http://localhost:8000) | Python FastAPI Machine Learning Service |
-| **AI API Docs** | `8000` | [http://localhost:8000/docs](http://localhost:8000/docs) | Interactive OpenAPI / Swagger Docs for AI Service |
-| **AI ReDoc Specs** | `8000` | [http://localhost:8000/redoc](http://localhost:8000/redoc) | Alternative ReDoc view for AI APIs |
-| **AI Health Check** | `8000` | [http://localhost:8000/health](http://localhost:8000/health) | AI Service health check endpoint |
-| **MinIO Admin Console** | `9001` | [http://localhost:9001](http://localhost:9001) | S3 Object Storage Web Admin<br/>**User**: `minioadmin`<br/>**Pass**: `minioadminpassword` |
+| Service | Port | Local URL | Description & Credentials |
+| :--- | :---: | :--- | :--- |
+| **Frontend App** | `3000` | [http://localhost:3000](http://localhost:3000) | React / Vite UI with Contract Vault & Analytics |
+| **Backend API** | `4000` | [http://localhost:4000](http://localhost:4000) | Express TypeScript REST API |
+| **Backend Swagger Docs** | `4000` | [http://localhost:4000/docs](http://localhost:4000/docs) | Interactive Swagger / OpenAPI Documentation |
+| **Backend Health** | `4000` | [http://localhost:4000/health](http://localhost:4000/health) | Health status JSON: `{"status":"ok"}` |
+| **AI / ML Microservice** | `8000` | [http://localhost:8000](http://localhost:8000) | FastAPI with Fine-tuned BERT Classifier |
+| **AI Swagger Docs** | `8000` | [http://localhost:8000/docs](http://localhost:8000/docs) | Interactive AI API Documentation |
+| **AI Health Check** | `8000` | [http://localhost:8000/health](http://localhost:8000/health) | AI Health status: `{"status":"ok","classifier":"finetuned"}` |
+| **MinIO Web Console** | `9001` | [http://localhost:9001](http://localhost:9001) | S3 Storage Admin<br/>User: `minioadmin` \| Pass: `minioadminpassword` |
 | **MinIO S3 API** | `9000` | [http://localhost:9000](http://localhost:9000) | S3 API endpoint for document uploads |
-| **PostgreSQL DB** | `5432` | `localhost:5432` | Database: `legalease`<br/>User: `postgres`<br/>Password: `postgrespassword` |
-| **Redis Queue & Cache**| `6379` | `localhost:6379` | In-memory cache & BullMQ queue |
+| **PostgreSQL DB** | `5432` | `localhost:5432` | Database: `legalease` \| User: `postgres` \| Pass: `postgrespassword` |
+| **Redis Cache & Queue** | `6379` | `localhost:6379` | BullMQ background jobs & cache |
 
 ---
 
-## 🛠️ Step 1: Start All Services
+## 🛠️ Prerequisites
 
-Before opening the links, ensure all required components are running.
+Before running the application, make sure you have installed:
+- **Docker Desktop** (running in the background)
+- **Node.js** (v18.x or v20.x+) and `npm`
+- **Python** (3.10.x or 3.11.x) and `pip`
+- **Git**
 
-### 1.1 Start Backing Services (Docker Compose)
-Open a terminal at the project root directory and run:
+---
 
-```bash
+# 🪟 Windows Instructions (PowerShell / Command Prompt)
+
+To run the complete system, open **4 separate terminal windows** (PowerShell or Windows Terminal tabs).
+
+---
+
+### Terminal 1: Backing Infrastructure (Docker)
+
+From the project root (`LegalEase`):
+
+```powershell
+# Start PostgreSQL, Redis, and MinIO in the background
 docker compose up -d
+
+# Verify all containers are up and healthy
+docker ps
 ```
-*This launches PostgreSQL, Redis, MinIO, and Backend containers in the background.*
+
+*Expected output: `legalease-postgres`, `legalease-redis`, and `legalease-minio` are in `Up` or `healthy` state.*
 
 ---
 
-### 1.2 Start Frontend Client (React / Vite)
-Open a terminal inside the `frontend/` directory:
+### Terminal 2: AI / ML Microservice (Python FastAPI)
 
-```bash
-cd frontend
+From the project root:
+
+```powershell
+# 1. Navigate to ai-service
+cd ai-service
+
+# 2. Activate existing virtual environment (or create if first time)
+if (-not (Test-Path ".venv")) { python -m venv .venv }
+.\.venv\Scripts\activate
+
+# 3. Install dependencies (first time or if requirements changed)
+pip install -r requirements.txt
+
+# 4. Start the FastAPI server on port 8000
+python -m uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+> **Using Windows Command Prompt (`cmd.exe`)?**
+> ```cmd
+> cd ai-service
+> .venv\Scripts\activate.bat
+> python -m uvicorn main:app --host 0.0.0.0 --port 8000
+> ```
+
+*Expected output:*
+```text
+INFO: Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2026-10-29 [...] [INFO] Classification pipeline: loaded fine-tuned model from ./models/legalease-clause-classifier
+```
+
+---
+
+### Terminal 3: Backend API Server (Node.js / Express)
+
+From the project root:
+
+```powershell
+# 1. Navigate to backend
+cd backend
+
+# 2. Install dependencies (first time only)
 npm install
+
+# 3. Apply database migrations to PostgreSQL
+npx prisma migrate deploy
+
+# 4. (Optional / Recommended) Backfill contract dates & reminders for existing contracts
+npm run backfill:dates
+
+# 5. Start the backend development server on port 4000
 npm run dev
 ```
-*Frontend runs on `http://localhost:3000`.*
 
----
-
-### 1.3 Start AI / ML Microservice (FastAPI)
-Open a terminal inside the `ai-service/` directory:
-
-#### 🪟 On Windows:
-```cmd
-cd ai-service
-python -m venv venv
-.\venv\Scripts\activate
-pip install -r requirements.txt
-python -m uvicorn main:app --host 127.0.0.1 --port 8000
+*Expected output:*
+```text
+S3 bucket "legalease-contracts" already exists.
+🤖 AI Service connected successfully at http://127.0.0.1:8000 (Version: 2.0.0, Classifier: finetuned)
+👷 Async background pipeline initialized in fault-tolerant direct mode.
+🚀 LegalEase Backend listening on http://localhost:4000
+📚 Swagger documentation live at http://localhost:4000/docs
+❤️  Health check available at http://localhost:4000/health
 ```
 
-#### 🍎 On macOS / Linux:
-```bash
-cd ai-service
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python3 -m uvicorn main:app --host 127.0.0.1 --port 8000
-```
-*AI service runs on `http://localhost:8000`.*
-
 ---
 
-## 🚀 Step 2: How to Open All Links Yourself
+### Terminal 4: Frontend Client (React / Vite)
 
-You can open these links either by **clicking them directly** or by using **step-by-step terminal commands**.
-
----
-
-### 🪟 Windows Instructions
-
-#### Option A: Using PowerShell (Recommended for Windows)
-
-Run these individual commands in your PowerShell window:
+From the project root:
 
 ```powershell
-# 1. Open Frontend Web App
-Start-Process "http://localhost:3000"
+# 1. Navigate to frontend
+cd frontend
 
-# 2. Open Backend Swagger API Documentation
-Start-Process "http://localhost:4000/docs"
+# 2. Install dependencies (first time only)
+npm install
 
-# 3. Open Backend Health Check Endpoint
-Start-Process "http://localhost:4000/health"
-
-# 4. Open AI Microservice Swagger API Docs
-Start-Process "http://localhost:8000/docs"
-
-# 5. Open AI Microservice Health Check Endpoint
-Start-Process "http://localhost:8000/health"
-
-# 6. Open MinIO Storage Web Admin Console
-Start-Process "http://localhost:9001"
+# 3. Start the Vite React development server on port 3000
+npm run dev
 ```
 
-#### Option B: Open ALL Links at once in PowerShell
+*Expected output:*
+```text
+  VITE v5.x.x  ready in 450 ms
 
-Copy and paste this single script into PowerShell to open all tabs in your default web browser immediately:
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: use --host to expose
+```
+
+---
+
+### 🌐 Open All URLs at Once on Windows
+
+In PowerShell, run this one-liner to launch all relevant tabs in your default browser:
 
 ```powershell
-@("http://localhost:3000", "http://localhost:4000/docs", "http://localhost:8000/docs", "http://localhost:9001") | ForEach-Object { Start-Process $_ }
-```
-
-#### Option C: Using Windows Command Prompt (cmd.exe)
-
-```cmd
-:: 1. Open Frontend Web App
-start http://localhost:3000
-
-:: 2. Open Backend Swagger API Docs
-start http://localhost:4000/docs
-
-:: 3. Open Backend Health Check
-start http://localhost:4000/health
-
-:: 4. Open AI Service Swagger Docs
-start http://localhost:8000/docs
-
-:: 5. Open AI Service Health Check
-start http://localhost:8000/health
-
-:: 6. Open MinIO Storage Console
-start http://localhost:9001
+@("http://localhost:3000", "http://localhost:3000/vault", "http://localhost:4000/docs", "http://localhost:8000/docs", "http://localhost:9001") | ForEach-Object { Start-Process $_ }
 ```
 
 ---
 
-### 🍎 macOS Instructions
+### ⚠️ Free Locked Ports on Windows (Troubleshooting)
 
-#### Option A: Using macOS Terminal (Step-by-Step)
+If a port shows `"Port 4000 is already in use"` or `"Port 8000 is already in use"`:
 
-Open your Terminal app on Mac and run these commands:
+```powershell
+# Free port 4000 (Backend)
+Get-NetTCPConnection -LocalPort 4000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+
+# Free port 8000 (AI Service)
+Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+
+# Free port 3000 (Frontend)
+Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+```
+
+---
+
+# 🍎 macOS Instructions (Terminal / zsh / bash)
+
+Open **4 separate Terminal tabs or windows** (or use tmux / iTerm2).
+
+---
+
+### Terminal 1: Backing Infrastructure (Docker)
+
+From the project root (`LegalEase`):
 
 ```bash
-# 1. Open Frontend Web App
-open "http://localhost:3000"
+# Start PostgreSQL, Redis, and MinIO in background
+docker compose up -d
 
-# 2. Open Backend Swagger API Documentation
-open "http://localhost:4000/docs"
-
-# 3. Open Backend Health Check Endpoint
-open "http://localhost:4000/health"
-
-# 4. Open AI Microservice Swagger API Docs
-open "http://localhost:8000/docs"
-
-# 5. Open AI Microservice Health Check Endpoint
-open "http://localhost:8000/health"
-
-# 6. Open MinIO Storage Web Admin Console
-open "http://localhost:9001"
+# Verify all containers are up and healthy
+docker ps
 ```
 
-#### Option B: Open ALL Links at once on macOS
+---
 
-Copy and paste this single command into your macOS Terminal to open all tabs at once:
+### Terminal 2: AI / ML Microservice (Python FastAPI)
+
+From the project root:
 
 ```bash
-open "http://localhost:3000" "http://localhost:4000/docs" "http://localhost:8000/docs" "http://localhost:9001"
+# 1. Navigate to ai-service
+cd ai-service
+
+# 2. Create virtual environment if not present
+if [ ! -d ".venv" ]; then
+  python3 -m venv .venv
+fi
+
+# 3. Activate virtual environment
+source .venv/bin/activate
+
+# 4. Install dependencies
+pip install -r requirements.txt
+
+# 5. Start the FastAPI server on port 8000
+python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
 ---
 
-## 🔒 Login Credentials for Admin Services
+### Terminal 3: Backend API Server (Node.js / Express)
 
-### MinIO Storage Web Console ([http://localhost:9001](http://localhost:9001))
-* **Username**: `minioadmin`
-* **Password**: `minioadminpassword`
+From the project root:
+
+```bash
+# 1. Navigate to backend
+cd backend
+
+# 2. Install dependencies
+npm install
+
+# 3. Apply database migrations to PostgreSQL
+npx prisma migrate deploy
+
+# 4. Backfill contract dates & reminders for all contracts in database
+npm run backfill:dates
+
+# 5. Start backend development server on port 4000
+npm run dev
+```
 
 ---
 
-## ❓ Troubleshooting & Verification
+### Terminal 4: Frontend Client (React / Vite)
 
-1. **Service Not Opening?** Ensure the service terminal shows it is running without error ports blocked.
-2. **Postgres Connection Issue?** Verify `docker compose ps` shows `legalease-postgres` as `healthy`.
-3. **Backend Health Verification**: Navigate to `http://localhost:4000/health` — it should return `{"status":"ok"}`.
-4. **AI Service Health Verification**: Navigate to `http://localhost:8000/health` — it should return `{"status":"ok","service":"ai-service"}`.
+From the project root:
+
+```bash
+# 1. Navigate to frontend
+cd frontend
+
+# 2. Install dependencies
+npm install
+
+# 3. Start Vite development server on port 3000
+npm run dev
+```
+
+---
+
+### 🌐 Open All URLs at Once on macOS
+
+In your macOS Terminal, run:
+
+```bash
+open "http://localhost:3000" "http://localhost:3000/vault" "http://localhost:4000/docs" "http://localhost:8000/docs" "http://localhost:9001"
+```
+
+---
+
+### ⚠️ Free Locked Ports on macOS (Troubleshooting)
+
+If a port is already in use:
+
+```bash
+# Free port 4000 (Backend)
+lsof -ti:4000 | xargs kill -9
+
+# Free port 8000 (AI Service)
+lsof -ti:8000 | xargs kill -9
+
+# Free port 3000 (Frontend)
+lsof -ti:3000 | xargs kill -9
+```
+
+---
+
+## 🧪 Verification & Feature Commands
+
+### 1. Test Contract Vault & Reminders End-to-End
+Run the verification script from the `backend/` folder:
+
+* **Windows:**
+  ```powershell
+  cd backend
+  npx ts-node --transpile-only scripts/verify_step6.ts
+  ```
+* **macOS:**
+  ```bash
+  cd backend
+  npx ts-node --transpile-only scripts/verify_step6.ts
+  ```
+
+*This inserts 2 test contracts (one expiring in 2 days, one expired 10 days ago), verifies the 4 summary cards (`Total`, `Active`, `Expiring Soon`, `Expired`), triggers the automated reminder worker, and tests live HTTP endpoints.*
+
+### 2. Run AI Date Extraction Pytests
+* **Windows:**
+  ```powershell
+  ai-service\.venv\Scripts\pytest ai-service/tests/test_date_extractor.py -v
+  ```
+* **macOS:**
+  ```bash
+  ai-service/.venv/bin/pytest ai-service/tests/test_date_extractor.py -v
+  ```
+
+### 3. Run AI Classifier Pytests
+* **Windows:**
+  ```powershell
+  ai-service\.venv\Scripts\pytest ai-service/tests/test_classifier.py -v
+  ```
+* **macOS:**
+  ```bash
+  ai-service/.venv/bin/pytest ai-service/tests/test_classifier.py -v
+  ```
+
+### 4. Export Calendar Feed (.ics)
+To download your RFC 5545 `.ics` iCalendar deadline schedule:
+- Open: `http://localhost:4000/api/v1/reminders/calendar.ics` (with auth token)
+- Or click **"Export Calendar (.ics)"** directly on the [http://localhost:3000/vault](http://localhost:3000/vault) page.
+
+---
+
+## 🔑 Login & Test Accounts
+
+- **Default Test User**: `shalvipatel1827@gmail.com`
+- **MinIO Storage Console**:
+  - URL: [http://localhost:9001](http://localhost:9001)
+  - Username: `minioadmin`
+  - Password: `minioadminpassword`
+- **PostgreSQL**:
+  - Host: `localhost:5432`
+  - Database: `legalease`
+  - Username: `postgres`
+  - Password: `postgrespassword`

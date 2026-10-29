@@ -90,37 +90,17 @@ export const ProcessingPage: React.FC = () => {
   // Poll backend document status
   const { status: polledStatus } = useDocumentStatus(docId, true);
 
-  // Simulated progression synchronized with polling status
+  // Real-time progression without fake step delays
   useEffect(() => {
     if (polledStatus === 'failed') return;
-
-    const timer = setInterval(() => {
-      setCurrentStepIndex((prev) => {
-        // Stop progression at Step 4 (Analyzing risks) until backend reports 'completed'
-        if (prev < STEPS.length - 2) {
-          return prev + 1;
-        }
-        return prev;
-      });
-    }, 1800);
-
-    return () => clearInterval(timer);
-  }, [polledStatus]);
-
-  // Handle final completion & confetti redirection
-  useEffect(() => {
-    if (polledStatus === 'completed') {
+    if (polledStatus === 'completed' || polledStatus === 'done') {
       setCurrentStepIndex(STEPS.length - 1);
       setShowConfetti(true);
-
-      // Pre-fetch analysis into Zustand store
       fetchAnalysis(docId).catch(() => {});
-
-      const redirectTimer = setTimeout(() => {
-        navigate(`/documents/${docId}/results`);
-      }, 1400);
-
-      return () => clearTimeout(redirectTimer);
+      // Go to results page immediately as soon as status is completed/done
+      navigate(`/documents/${docId}/results`);
+    } else if (polledStatus === 'processing' || polledStatus === 'uploaded') {
+      setCurrentStepIndex((prev) => (prev < STEPS.length - 2 ? prev + 1 : prev));
     }
   }, [polledStatus, docId, navigate, fetchAnalysis]);
 

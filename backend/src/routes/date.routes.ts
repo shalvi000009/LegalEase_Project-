@@ -296,4 +296,156 @@ router.post("/:id/dates", requireAuth, async (req: Request, res: Response, next:
   }
 });
 
+
+/**
+ * @openapi
+ * /api/v1/documents/{id}/dates/{dateId}:
+ *   patch:
+ *     summary: Update an existing contract date
+ *     tags:
+ *       - Dates & Reminders
+ *     security:
+ *       - bearerAuth: []
+ */
+router.patch("/:id/dates/:dateId", requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const reqAuth = req as AuthenticatedRequest;
+    if (!reqAuth.user) throw new BadRequestError("User context missing");
+
+    const { id: documentId, dateId } = req.params;
+    const userId = reqAuth.user.id;
+    const { date_type, raw_text, resolved_date, user_confirmed } = req.body;
+
+    const document = await prisma.document.findFirst({
+      where: { id: documentId, user_id: userId },
+    });
+    if (!document) throw new NotFoundError("Document not found");
+
+    const existingDate = await prisma.contractDate.findFirst({
+      where: { id: dateId, doc_id: documentId },
+    });
+    if (!existingDate) throw new NotFoundError("Contract date not found");
+
+    const updateData: any = {};
+    if (date_type !== undefined) updateData.date_type = date_type;
+    if (raw_text !== undefined) updateData.raw_text = raw_text;
+    if (user_confirmed !== undefined) updateData.user_confirmed = Boolean(user_confirmed);
+    if (resolved_date !== undefined) {
+      const parsed = new Date(resolved_date);
+      if (isNaN(parsed.getTime())) throw new BadRequestError("Invalid resolved_date format");
+      updateData.resolved_date = parsed;
+    }
+
+    const updated = await prisma.contractDate.update({
+      where: { id: dateId },
+      data: updateData,
+    });
+
+    // If expiry date or renewal was modified, refresh reminders
+    if (
+      (updated.date_type === "expiry_date" || updated.date_type === "renewal_date") &&
+      updateData.resolved_date
+    ) {
+      const { saveContractDatesAndReminders } = await import("../services/contractDate.service");
+      await saveContractDatesAndReminders(
+        documentId,
+        userId,
+        {
+          expiry_date: updated.date_type === "expiry_date" ? updated.resolved_date.toISOString().split("T")[0] : undefined,
+          renewal_date: updated.date_type === "renewal_date" ? updated.resolved_date.toISOString().split("T")[0] : undefined,
+        },
+        "manual"
+      );
+    }
+
+    res.status(200).json({ date: updated });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @openapi
+ * /api/v1/documents/{id}/dates/confirm-all:
+ *   post:
+ *     summary: Confirm all contract dates for a document
+ *     tags:
+ *       - Dates & Reminders
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post("/:id/dates/confirm-all", requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const reqAuth = req as AuthenticatedRequest;
+    if (!reqAuth.user) throw new BadRequestError("User context missing");
+
+    const documentId = req.params.id;
+    const userId = reqAuth.user.id;
+
+    const document = await prisma.document.findFirst({
+      where: { id: documentId, user_id: userId },
+    });
+    if (!document) throw new NotFoundError("Document not found");
+
+    await prisma.contractDate.updateMany({
+      where: { doc_id: documentId },
+      data: { user_confirmed: true },
+    });
+
+    const dates = await prisma.contractDate.findMany({
+      where: { doc_id: documentId, is_active: true },
+      orderBy: { resolved_date: "asc" },
+    });
+
+    res.status(200).json({ dates });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @openapi
+ * /api/v1/documents/{id}/dates/{dateId}:
+ *   delete:
+ *     summary: Soft delete or remove a contract date
+ *     tags:
+ *       - Dates & Reminders
+ *     security:
+ *       - bearerAuth: []
+ */
+router.delete("/:id/dates/:dateId", requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const reqAuth = req as AuthenticatedRequest;
+    if (!reqAuth.user) throw new BadRequestError("User context missing");
+
+    const { id: documentId, dateId } = req.params;
+    const userId = reqAuth.user.id;
+
+    const document = await prisma.document.findFirst({
+      where: { id: documentId, user_id: userId },
+    });
+    if (!document) throw new NotFoundError("Document not found");
+
+    const existingDate = await prisma.contractDate.findFirst({
+      where: { id: dateId, doc_id: documentId },
+    });
+    if (!existingDate) throw new NotFoundError("Contract date not found");
+
+    // Remove pending reminders
+    await prisma.reminder.deleteMany({
+      where: { contract_date_id: dateId, status: "pending" },
+    });
+
+    // Deactivate date
+    await prisma.contractDate.update({
+      where: { id: dateId },
+      data: { is_active: false },
+    });
+
+    res.status(200).json({ success: true, message: "Date deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

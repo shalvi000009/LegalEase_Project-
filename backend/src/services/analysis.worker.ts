@@ -6,6 +6,8 @@ import {
   calculateAggregatedRiskDimensions,
   calculateWeightedOverallRiskScore,
 } from "../config/riskWeights";
+import { toValidClauseType, toValidRiskLevel } from "../utils/clauseMapper";
+import { saveContractDatesAndReminders } from "./contractDate.service";
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
 
@@ -19,6 +21,8 @@ export const startAnalysisWorker = (): Worker => {
     "document-analysis",
     async (job: Job) => {
       const { documentId, s3Key } = job.data;
+      const tWorkerStart = performance.now();
+      let tAi = 0;
 
       console.log(
         `[Worker] Started processing document job ${job.id} for document ${documentId}`
@@ -48,8 +52,12 @@ export const startAnalysisWorker = (): Worker => {
         let clauses: any[] = [];
         let originalLanguage = "en";
         let translationUsed = false;
+        let aiDataResponse: any = null;
 
+        const abortController = new AbortController();
+        const timeoutId = setTimeout(() => abortController.abort(), 120000); // 120s AI timeout
         try {
+          const tAiStart = performance.now();
           const aiResponse = await fetch(`${AI_SERVICE_URL}/api/v1/analyze`, {
             method: "POST",
             headers: {
@@ -59,10 +67,14 @@ export const startAnalysisWorker = (): Worker => {
               s3_key: s3Key,
               document_id: documentId,
             }),
+            signal: abortController.signal,
           });
 
+          clearTimeout(timeoutId);
+          tAi = performance.now() - tAiStart;
           if (aiResponse.ok) {
             const aiData: any = await aiResponse.json();
+            aiDataResponse = aiData;
 
             overallScore = aiData.overall_risk_score ?? 50;
             modelVersion = aiData.model_version ?? "legal-bert-v1.0.0";
@@ -72,7 +84,16 @@ export const startAnalysisWorker = (): Worker => {
           } else {
             throw new Error(`AI service status ${aiResponse.status}`);
           }
-        } catch (fetchErr: unknown) {
+        } catch (fetchErr: any) {
+          clearTimeout(timeoutId);
+          if (fetchErr.name === "AbortError" || abortController.signal.aborted) {
+            console.error(`[Worker] AI Service timeout after 120s for document ${documentId}`);
+            await prisma.document.update({
+              where: { id: documentId },
+              data: { status: "failed" },
+            }).catch(() => {});
+            throw new Error(`AI Service call timed out after 120s`);
+          }
           console.error(`[Worker] AI Service call failed for document ${documentId}:`, fetchErr);
           throw fetchErr;
         }
@@ -100,6 +121,7 @@ export const startAnalysisWorker = (): Worker => {
         }
 
         // Store analysis
+        const tDbStart = performance.now();
         const analysis = await prisma.analysis.create({
           data: {
             document_id: documentId,
@@ -109,26 +131,43 @@ export const startAnalysisWorker = (): Worker => {
             original_language: originalLanguage,
             translation_used: translationUsed,
           },
+
         });
 
         // Store clauses
         await prisma.clause.createMany({
           data: preparedClauses.map((c: any) => ({
             analysis_id: analysis.id,
-            clause_type: c.clause_type,
-            risk_level: c.risk_level,
-            explanation: c.explanation,
-            original_text: c.original_text,
-            risk_score: c.risk_score,
+            clause_type: toValidClauseType(c.clause_type),
+            risk_level: toValidRiskLevel(c.risk_level),
+            explanation: c.explanation || c.rationale || `Clause identified as ${c.clause_type} with ${c.risk_level} risk level.`,
+            original_text: c.original_text || c.text || c.excerpt || `Contract clause text for ${c.clause_type}.`,
+            risk_score: typeof c.risk_score === "number" ? Math.min(100, Math.max(0, Math.round(c.risk_score))) : 50,
             dimension_contributions: c.dimension_contributions as any,
           })),
         });
+
+        // Save contract dates & reminders
+        try {
+          const docObj = await prisma.document.findUnique({ where: { id: documentId } });
+          if (docObj && aiDataResponse?.contract_dates) {
+            await saveContractDatesAndReminders(documentId, docObj.user_id, aiDataResponse.contract_dates, "extracted");
+            console.log(`[Worker] Saved contract dates and scheduled reminders for document ${documentId}`);
+          }
+        } catch (dateErr) {
+          console.warn(`[Worker] Date extraction saving warning for ${documentId}:`, dateErr);
+        }
 
         // 3. Transition status to done
         await prisma.document.update({
           where: { id: documentId },
           data: { status: "done" },
         });
+        const tDb = performance.now() - tDbStart;
+        const tWorkerTotal = performance.now() - tWorkerStart;
+        console.log(`[Worker Timing] AI call total: ${tAi.toFixed(1)} ms | DB save: ${tDb.toFixed(1)} ms | Total worker: ${tWorkerTotal.toFixed(1)} ms`);
+
+
         console.log(
           `[Worker] Successfully completed processing document ${documentId}`
         );

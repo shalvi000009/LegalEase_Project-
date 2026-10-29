@@ -144,13 +144,13 @@ def call_gpt_4o_analysis(
     client = None
     model_name = "gpt-4o"
 
-    if groq_key and groq_key.startswith("gsk_"):
+    if groq_key and groq_key.startswith("gsk_") and not groq_key.startswith("gsk_your_"):
         try:
             client = OpenAI(api_key=groq_key, base_url="https://api.groq.com/openai/v1")
             model_name = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
         except Exception as exc:
             logger.warning("Groq client initialization failed for checklist: %s", exc)
-    elif openai_key and openai_key.startswith("sk-") and not openai_key.startswith("your_"):
+    elif openai_key and openai_key.startswith("sk-") and not openai_key.startswith("your_") and not openai_key.startswith("sk-your_"):
         try:
             client = OpenAI(api_key=openai_key)
             model_name = "gpt-4o"
@@ -198,6 +198,7 @@ Provide the response in raw JSON format with the following keys:
             ],
             max_tokens=600,
             temperature=0.2,
+            timeout=8.0,
         )
         content = response.choices[0].message.content
         if content:

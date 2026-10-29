@@ -1,6 +1,6 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import swaggerUi from "swagger-ui-express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
@@ -14,10 +14,9 @@ import reminderRoutes from "./routes/reminder.routes";
 import notificationRoutes from "./routes/notification.routes";
 import integrationRoutes from "./routes/integration.routes";
 import scanRoutes from "./routes/scan.routes";
+import vaultRoutes from "./routes/vault.routes";
 import { swaggerSpec } from "./config/swagger";
 import { errorHandler } from "./middleware/errorHandler";
-
-dotenv.config();
 
 const app = express();
 
@@ -127,6 +126,7 @@ app.use("/api/v1/auth", authLimiter, authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/documents", documentRoutes);
 app.use("/api/v1/documents", analysisRoutes);
+app.use("/api/v1/analysis", analysisRoutes);
 app.use("/api/v1/documents", dateRoutes);
 app.use("/api/v1/reminders", reminderRoutes);
 app.use("/api/v1/notification-preferences", notificationRoutes);
@@ -134,6 +134,8 @@ app.use("/api/v1/chat", chatLimiter, chatRoutes);
 app.use("/api/v1/share", shareRoutes);
 app.use("/api/v1/integrations", integrationRoutes);
 app.use("/api/v1", scanRoutes);
+app.use("/api/v1/vault", vaultRoutes);
+app.use("/api/vault", vaultRoutes);
 
 // Centralized error handling
 app.use(errorHandler);

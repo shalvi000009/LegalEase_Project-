@@ -1,6 +1,8 @@
 import { Queue, ConnectionOptions } from "bullmq";
 import { URL } from "url";
 import { prisma } from "./db";
+import { toValidClauseType, toValidRiskLevel } from "../utils/clauseMapper";
+import { saveContractDatesAndReminders } from "../services/contractDate.service";
 
 const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
 const isMock = process.env.MOCK_SERVICES === "true";
@@ -34,6 +36,8 @@ export const analysisQueue = enableRedis ? new Queue("document-analysis", {
 export const processDocumentJobReal = async (documentId: string, s3Key: string): Promise<void> => {
   const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000";
   console.log(`[Worker] Started processing document ${documentId} with s3Key ${s3Key}`);
+  const tWorkerStart = performance.now();
+  let tAi = 0;
 
   try {
     await prisma.document.update({
@@ -52,16 +56,23 @@ export const processDocumentJobReal = async (documentId: string, s3Key: string):
     let weightedOverallScore = 50;
     let originalLanguage = "en";
     let translationUsed = false;
+    let aiData: any = null;
 
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => abortController.abort(), 120000); // 120s AI timeout
     try {
+      const tAiStart = performance.now();
       const aiResponse = await fetch(`${AI_SERVICE_URL}/api/v1/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ s3_key: s3Key, document_id: documentId }),
+        signal: abortController.signal,
       });
 
+      clearTimeout(timeoutId);
+      tAi = performance.now() - tAiStart;
       if (aiResponse.ok) {
-        const aiData: any = await aiResponse.json();
+        aiData = await aiResponse.json();
         overallScore = aiData.overall_risk_score ?? 50;
         modelVersion = aiData.model_version ?? "legal-bert-v1.0.0";
         clauses = aiData.clauses ?? [];
@@ -70,10 +81,18 @@ export const processDocumentJobReal = async (documentId: string, s3Key: string):
         originalLanguage = aiData.original_language ?? "en";
         translationUsed = aiData.translation_used ?? false;
       } else {
-
         throw new Error(`AI Service classification status ${aiResponse.status}`);
       }
-    } catch (aiErr) {
+    } catch (aiErr: any) {
+      clearTimeout(timeoutId);
+      if (aiErr.name === "AbortError" || abortController.signal.aborted) {
+        console.error(`[Worker] AI Service timeout after 120s for document ${documentId}`);
+        await prisma.document.update({
+          where: { id: documentId },
+          data: { status: "failed" },
+        }).catch(() => {});
+        throw new Error(`AI Service call timed out after 120s`);
+      }
       console.warn(`[Worker] AI Service offline/unreachable for ${documentId}, applying intelligent heuristic analysis:`, aiErr);
       overallScore = 68;
       modelVersion = "legal-bert-v1.0.0-heuristic";
@@ -124,14 +143,15 @@ export const processDocumentJobReal = async (documentId: string, s3Key: string):
 
     const preparedClauses = clauses.map((c: any) => ({
       analysis_id: "",
-      clause_type: c.clause_type,
-      risk_level: c.risk_level,
+      clause_type: toValidClauseType(c.clause_type),
+      risk_level: toValidRiskLevel(c.risk_level),
       explanation: c.explanation || c.matching_rules?.join("; ") || `Clause classified as ${c.clause_type}`,
       original_text: c.original_text || c.text || "",
-      risk_score: c.risk_score,
+      risk_score: typeof c.risk_score === "number" ? Math.min(100, Math.max(0, Math.round(c.risk_score))) : 50,
       dimension_contributions: c.dimension_scores || c.dimension_contributions || null,
     }));
 
+    const tDbStart = performance.now();
     const analysis = await prisma.analysis.create({
       data: {
         document_id: documentId,
@@ -215,6 +235,9 @@ export const processDocumentJobReal = async (documentId: string, s3Key: string):
       where: { id: documentId },
       data: { status: "done" },
     });
+    const tDb = performance.now() - tDbStart;
+    const tWorkerTotal = performance.now() - tWorkerStart;
+    console.log(`[Worker Timing] AI call total: ${tAi.toFixed(1)} ms | DB save: ${tDb.toFixed(1)} ms | Total worker: ${tWorkerTotal.toFixed(1)} ms`);
     console.log(`[Worker] Successfully completed processing real document ${documentId}`);
   } catch (error: any) {
     console.error(`[Worker] Failed to process document ${documentId}:`, error?.stack || error);
@@ -226,10 +249,12 @@ export const processDocumentJobReal = async (documentId: string, s3Key: string):
 };
 
 export const enqueueAnalysisJob = async (documentId: string, s3Key: string): Promise<void> => {
-  if (isMock || !analysisQueue) {
-    setTimeout(() => {
+  const workersEnabled = process.env.ENABLE_WORKERS === "true";
+  if (isMock || !analysisQueue || !workersEnabled) {
+    // Immediate execution (no delay)
+    setImmediate(() => {
       processDocumentJobReal(documentId, s3Key);
-    }, 100);
+    });
     return;
   }
 
@@ -240,12 +265,13 @@ export const enqueueAnalysisJob = async (documentId: string, s3Key: string): Pro
       {
         attempts: 3,
         backoff: { type: "exponential", delay: 5000 },
+        // Immediate start (no delay option)
       }
     );
   } catch (queueErr) {
-    console.warn(`[Queue] BullMQ add failed (Redis offline). Falling back to inline async processing:`, queueErr);
-    setTimeout(() => {
+    console.warn(`[Queue] BullMQ add failed. Falling back to immediate inline processing:`, queueErr);
+    setImmediate(() => {
       processDocumentJobReal(documentId, s3Key);
-    }, 100);
+    });
   }
 };

@@ -80,3 +80,19 @@ export async function addDate(
   });
   return transformDate(response.data.date || response.data);
 }
+
+/**
+ * Fetch all contracts formatted for Contract Vault
+ */
+export async function getVaultContracts(): Promise<{ contracts: any[]; stats: any }> {
+  const response = await apiClient.get('/vault/contracts');
+  return response.data;
+}
+
+/**
+ * Update contract status in vault
+ */
+export async function updateContractStatusApi(id: string, status: string): Promise<any> {
+  const response = await apiClient.patch(`/vault/contracts/${id}/status`, { status });
+  return response.data;
+}

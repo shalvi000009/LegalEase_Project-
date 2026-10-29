@@ -20,7 +20,7 @@ export interface SendReminderEmailParams {
  * Send deadline reminder transactional email via SendGrid.
  * Falls back to mock logging if SENDGRID_API_KEY is not configured.
  */
-export async function sendReminderEmail(params: SendReminderEmailParams): Promise<{ success: boolean; messageId?: string }> {
+export async function sendReminderEmail(params: SendReminderEmailParams): Promise<{ success: boolean; messageId?: string; warning?: string }> {
   const { to, userName, documentTitle, dateType, resolvedDate, daysBefore } = params;
 
   const formattedDate = new Date(resolvedDate).toLocaleDateString("en-US", {
@@ -91,7 +91,8 @@ export async function sendReminderEmail(params: SendReminderEmailParams): Promis
     html: htmlContent,
   };
 
-  if (!apiKey || process.env.MOCK_SERVICES === "true") {
+  const isPlaceholderKey = !apiKey || apiKey.includes("your_real_") || apiKey.includes("your_sendgrid");
+  if (isPlaceholderKey || process.env.MOCK_SERVICES === "true") {
     console.log(`[EMAIL SERVICE MOCK] Simulated SendGrid email to ${to}: "${msg.subject}"`);
     return { success: true, messageId: `mock-${Date.now()}` };
   }
@@ -101,7 +102,12 @@ export async function sendReminderEmail(params: SendReminderEmailParams): Promis
     console.log(`[EMAIL SERVICE] SendGrid email sent successfully to ${to}. Status Code: ${response.statusCode}`);
     return { success: true, messageId: response.headers["x-message-id"] as string };
   } catch (error: any) {
-    console.error("[EMAIL SERVICE ERROR] Failed to send SendGrid email:", error?.response?.body || error.message);
-    throw error;
+    const errorDetails = error?.response?.body?.errors?.[0]?.message || error.message;
+    console.warn("[EMAIL SERVICE WARNING] SendGrid delivery failed (e.g. unverified sender):", errorDetails);
+    return {
+      success: false,
+      messageId: `simulated-${Date.now()}`,
+      warning: `SendGrid rejected delivery: ${errorDetails}`,
+    };
   }
 }

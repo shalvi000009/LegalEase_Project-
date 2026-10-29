@@ -1,127 +1,111 @@
-# LegalEase: Run Everything Guide
+# LegalEase: Run Everything Guide (Windows & macOS)
 
-This guide explains how to start and run all parts of the **LegalEase** application:
-1. **Backing Databases & Queues** (PostgreSQL, Redis, MinIO)
-2. **Backend API Server** (Express)
-3. **Frontend Client** (React/Vite)
-4. **AI/ML Service** (Python FastAPI)
+This guide provides the exact commands to run the **LegalEase** application stack locally on **Windows** and **macOS**.
 
 ---
 
-## 🛠️ Step 1: Start the Backing Services (Database, Queue, Storage)
+## 🏗️ Architecture & Services
 
-You can run these services either using **Docker** (recommended, easiest) or **Locally** (without Docker).
-
-### Option A: Run using Docker (Recommended)
-If you have Docker Desktop installed and running:
-1. Open a terminal at the project root directory.
-2. Run the command:
-   ```bash
-   docker compose up -d
-   ```
-   *This starts PostgreSQL (database), Redis (queues), and MinIO (file storage) in the background.*
-
-### Option B: Run locally (Without Docker)
-If you don't have Docker, you must install and start these 3 services manually on your system:
-1. **PostgreSQL**: Download and start PostgreSQL on port `5432`. Ensure the database user is `postgres` with password `postgres`.
-2. **Redis**: Download and start Redis server on port `6379`.
-3. **MinIO**: Download MinIO Server and run it:
-   ```cmd
-   minio.exe server C:\minio_data --console-address :9001
-   ```
-   Ensure MinIO API is listening on port `9000`.
+1. **Backing Databases & Queues**: PostgreSQL (`5432`), Redis (`6379`), MinIO S3 (`9000` / `9001`)
+2. **AI / ML Microservice**: Python FastAPI on `http://localhost:8000`
+3. **Backend REST API**: Node.js / Express on `http://localhost:4000`
+4. **Frontend Client**: React / Vite on `http://localhost:3000`
 
 ---
 
-## 💻 Step 2: Set Up and Run the Express Backend
+## 🪟 Windows Quick Start (PowerShell)
 
-1. Navigate to the `backend/` folder:
-   ```bash
-   cd backend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Configure your Environment variables. Create or edit `backend/.env` file:
-   ```env
-   PORT=4000
-   DATABASE_URL=postgresql://postgres:postgres@localhost:5432/legalease?schema=public
-   REDIS_URL=redis://localhost:6379
-   S3_ENDPOINT=http://localhost:9000
-   S3_ACCESS_KEY=minioadmin
-   S3_SECRET_KEY=minioadminpassword
-   S3_BUCKET_NAME=legalease-contracts
-   JWT_ACCESS_SECRET=your_super_secret_access_key
-   JWT_REFRESH_SECRET=your_super_secret_refresh_key
-   
-   # IMPORTANT CONFIGURATION:
-   # Set to "true" to run in Mock Mode (runs without needing Docker, S3, or PostgreSQL).
-   # Set to "false" to run in real Production mode.
-   MOCK_SERVICES=true
-   
-   AI_SERVICE_URL=http://localhost:8000
-   ```
-4. Update the database schema:
-   * **If running in real mode** (with PostgreSQL active):
-     ```bash
-     npx prisma db push
-     ```
-   * **If running in mock mode** (`MOCK_SERVICES=true`): You can skip this database sync step.
-5. Start the backend development server:
-   ```bash
-   npm run dev
-   ```
-   *The backend will now be running at [http://localhost:4000](http://localhost:4000).*
+Open **4 separate PowerShell windows**:
+
+### 1. Docker Backing Services
+```powershell
+docker compose up -d
+```
+
+### 2. AI Service (Python FastAPI)
+```powershell
+cd ai-service
+.\.venv\Scripts\activate
+python -m uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+### 3. Backend API (Express)
+```powershell
+cd backend
+npm install
+npx prisma migrate deploy
+npm run backfill:dates
+npm run dev
+```
+
+### 4. Frontend Web App (React)
+```powershell
+cd frontend
+npm install
+npm run dev
+```
 
 ---
 
-## 🎨 Step 3: Set Up and Run the React Frontend
+## 🍎 macOS Quick Start (Terminal / zsh / bash)
 
-1. Open a new terminal window and navigate to the `frontend/` folder:
-   ```bash
-   cd frontend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the Vite development server:
-   ```bash
-   npm run dev
-   ```
-   *The frontend website will open at [http://localhost:5173](http://localhost:5173).*
+Open **4 separate Terminal tabs or windows**:
 
----
+### 1. Docker Backing Services
+```bash
+docker compose up -d
+```
 
-## 🤖 Step 4: Set Up and Run the AI/ML Python Service
+### 2. AI Service (Python FastAPI)
+```bash
+cd ai-service
+source .venv/bin/activate
+python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
+```
 
-*(Only required when `MOCK_SERVICES=false` in the backend environment)*
+### 3. Backend API (Express)
+```bash
+cd backend
+npm install
+npx prisma migrate deploy
+npm run backfill:dates
+npm run dev
+```
 
-1. Open a new terminal window and navigate to the `ai-service/` folder:
-   ```bash
-   cd ai-service
-   ```
-2. Create and activate a Python virtual environment:
-   * **On Windows**:
-     ```bash
-     python -m venv venv
-     .\venv\Scripts\activate
-     ```
-   * **On macOS/Linux**:
-     ```bash
-     python3 -m venv venv
-     source venv/bin/activate
-     ```
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. Start the FastAPI server:
-   ```bash
-   uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-   ```
-   *The AI/ML Service is now running at [http://localhost:8000](http://localhost:8000).*
+### 4. Frontend Web App (React)
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
 ---
 
+## 🌐 Application URLs
+
+- **Web Application**: [http://localhost:3000](http://localhost:3000)
+- **Contract Vault**: [http://localhost:3000/vault](http://localhost:3000/vault)
+- **Deadline Calendar**: [http://localhost:3000/vault/calendar](http://localhost:3000/vault/calendar)
+- **Backend Swagger API Docs**: [http://localhost:4000/docs](http://localhost:4000/docs)
+- **Backend Health Check**: [http://localhost:4000/health](http://localhost:4000/health)
+- **AI Service Swagger Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **AI Service Health Check**: [http://localhost:8000/health](http://localhost:8000/health)
+- **MinIO Storage Console**: [http://localhost:9001](http://localhost:9001) (`minioadmin` / `minioadminpassword`)
+
+---
+
+## 🧪 Verification Commands
+
+### Test Contract Vault & Reminders with Real Data
+```bash
+cd backend
+npx ts-node --transpile-only scripts/verify_step6.ts
+```
+
+### Run Date Extractor Pytests
+* **Windows**: `ai-service\.venv\Scripts\pytest ai-service/tests/test_date_extractor.py -v`
+* **macOS**: `ai-service/.venv/bin/pytest ai-service/tests/test_date_extractor.py -v`
+
+### Run Clause Classifier Pytests
+* **Windows**: `ai-service\.venv\Scripts\pytest ai-service/tests/test_classifier.py -v`
+* **macOS**: `ai-service/.venv/bin/pytest ai-service/tests/test_classifier.py -v`
