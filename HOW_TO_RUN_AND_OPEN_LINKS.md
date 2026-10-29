@@ -62,8 +62,8 @@ From the project root:
 # 1. Navigate to ai-service
 cd ai-service
 
-# 2. Activate existing virtual environment (or create if first time)
-if (-not (Test-Path ".venv")) { python -m venv .venv }
+# 2. Activate existing virtual environment (Python 3.10+ required; use Python 3.11)
+if (-not (Test-Path ".venv")) { py -3.11 -m venv .venv }
 .\.venv\Scripts\activate
 
 # 3. Install dependencies (first time or if requirements changed)
