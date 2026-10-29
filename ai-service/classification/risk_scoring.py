@@ -42,21 +42,27 @@ class RiskRule:
         return self.pattern.lower() in text.lower()
 
 
-# Base risk scores for each of the 12 clause types
+# Base risk scores for each of the 12+ clause types
 BASE_RISK_SCORES: Dict[str, int] = {
     "termination": 40,
     "indemnity": 60,
+    "indemnification": 60,
     "non_compete": 70,
     "confidentiality": 30,
     "limitation_of_liability": 55,
+    "liability_limitation": 55,
     "payment_terms": 35,
     "governing_law": 20,
     "intellectual_property": 50,
+    "ip_ownership": 50,
     "force_majeure": 15,
     "severability": 10,
     "non_solicitation": 65,
     "assignment": 25,
-    "other": 15,  # Fallback class
+    "auto_renewal": 35,
+    "arbitration": 25,
+    "data_privacy": 30,
+    "other": 0,  # Fallback / non-risky class
 }
 
 # Specific rules for each clause type to modify the risk score
@@ -141,7 +147,37 @@ RISK_RULES: Dict[str, List[RiskRule]] = {
         RiskRule("shall not assign", 5, "General restriction on assignment"),
         RiskRule("permitted assigns", -5, "Binding on successors and assigns (reduces risk)"),
     ],
+    "auto_renewal": [
+        RiskRule("automatic renewal", 15, "Automatic renewal clause"),
+        RiskRule("automatically renew", 15, "Automatic renewal unless notice given"),
+        RiskRule("evergreen", 20, "Evergreen auto-renewal provision"),
+        RiskRule("successive", 10, "Successive terms renewal"),
+        RiskRule("prior written notice", -5, "Notice required to prevent renewal"),
+        RiskRule("30 days notice", -10, "Standard notice window to terminate renewal"),
+        RiskRule("60 days notice", -5, "60-day notice window before renewal"),
+    ],
+    "arbitration": [
+        RiskRule("binding arbitration", 15, "Mandatory binding arbitration"),
+        RiskRule("class action waive", 25, "Class action waiver (high risk)"),
+        RiskRule("icc rules", 5, "ICC arbitration rules"),
+        RiskRule("aaa rules", 5, "AAA arbitration rules"),
+        RiskRule("exclusive jurisdiction", 5, "Exclusive dispute forum"),
+        RiskRule("mutual", -10, "Mutual dispute resolution (reduces risk)"),
+    ],
+    "data_privacy": [
+        RiskRule("gdpr", 10, "GDPR compliance requirements"),
+        RiskRule("breach notification", 10, "Mandatory breach notification timeline"),
+        RiskRule("cross-border", 15, "Cross-border data transfer restrictions"),
+        RiskRule("personal data", 5, "Processing of personal data"),
+        RiskRule("applicable data protection", 0, "Standard data protection compliance"),
+        RiskRule("standard contractual clauses", -10, "Standard contractual clauses in place"),
+    ],
 }
+
+# Alias rules for alternative naming from sequence classification model
+RISK_RULES["liability_limitation"] = RISK_RULES["limitation_of_liability"]
+RISK_RULES["indemnification"] = RISK_RULES["indemnity"]
+RISK_RULES["ip_ownership"] = RISK_RULES["intellectual_property"]
 
 
 class RiskEngine:
@@ -164,6 +200,14 @@ class RiskEngine:
                 "risk_level": str ("low" | "medium" | "high")
                 "matching_rules": list[str]
         """
+        # Rule 3: 'other' clauses are treated as safe and not shown as risky
+        if clause_type == "other":
+            return {
+                "risk_score": 0,
+                "risk_level": "low",
+                "matching_rules": [],
+            }
+
         base_score = BASE_RISK_SCORES.get(clause_type, BASE_RISK_SCORES["other"])
         rules = RISK_RULES.get(clause_type, [])
 

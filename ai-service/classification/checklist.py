@@ -22,16 +22,22 @@ logger = logging.getLogger(__name__)
 CHECKLIST_ITEMS: Dict[str, str] = {
     "termination": "Termination clause (notice period and terms)",
     "indemnity": "Indemnification and hold-harmless protection",
+    "indemnification": "Indemnification and hold-harmless protection",
     "non_compete": "Non-compete covenant (scope and duration)",
     "confidentiality": "Confidentiality and non-disclosure obligations",
     "limitation_of_liability": "Limitation of liability and financial cap",
+    "liability_limitation": "Limitation of liability and financial cap",
     "payment_terms": "Payment terms (invoicing, late fees, non-refundability)",
     "governing_law": "Governing law and jurisdiction",
     "intellectual_property": "Intellectual property ownership and assignment",
+    "ip_ownership": "Intellectual property ownership and assignment",
     "force_majeure": "Force majeure (excused performance)",
     "severability": "Severability of provisions",
     "non_solicitation": "Non-solicitation restrictions (employees/customers)",
     "assignment": "Assignment rights and restrictions",
+    "auto_renewal": "Term and automatic renewal terms",
+    "arbitration": "Dispute resolution and binding arbitration",
+    "data_privacy": "Data privacy and data protection compliance",
 }
 
 # ---------------------------------------------------------------------------
@@ -217,7 +223,22 @@ def get_rule_based_missing_clauses(
     """
     Determines missing clauses by checking required checklist items not present in classified clauses.
     """
-    present_types = {c.get("clause_type") for c in classified_clauses if c.get("clause_type")}
+    canonical_aliases = {
+        "liability_limitation": "limitation_of_liability",
+        "limitation_of_liability": "liability_limitation",
+        "indemnification": "indemnity",
+        "indemnity": "indemnification",
+        "ip_ownership": "intellectual_property",
+        "intellectual_property": "ip_ownership",
+    }
+    present_types = set()
+    for c in classified_clauses:
+        ctype = c.get("clause_type")
+        if ctype and ctype != "other":
+            present_types.add(ctype)
+            if ctype in canonical_aliases:
+                present_types.add(canonical_aliases[ctype])
+
     checklist = CONTRACT_CHECKLISTS.get(contract_type, CONTRACT_CHECKLISTS["other"])
 
     missing = []
@@ -252,18 +273,24 @@ def get_rule_based_suggested_questions(
         clause_type = c.get("clause_type")
         if clause_type == "non_compete":
             questions.append("Can the non-compete clause be limited to 12 months within my geographic area?")
-        elif clause_type == "limitation_of_liability":
+        elif clause_type in ("limitation_of_liability", "liability_limitation"):
             questions.append("Is there a liability cap for employee indemnification obligations?")
         elif clause_type == "termination":
             questions.append("Can I negotiate a 30-day mutual notice period for termination?")
-        elif clause_type == "intellectual_property":
+        elif clause_type in ("intellectual_property", "ip_ownership"):
             questions.append("What side-projects are exempt from the intellectual property assignment clause?")
         elif clause_type == "confidentiality":
             questions.append("Is the confidentiality obligation mutual, and does it survive indefinitely?")
-        elif clause_type == "indemnity":
+        elif clause_type in ("indemnity", "indemnification"):
             questions.append("Can we make the indemnification clause mutual instead of unilateral?")
         elif clause_type == "payment_terms":
             questions.append("Can we extend the payment window to a standard net-30 days?")
+        elif clause_type == "auto_renewal":
+            questions.append("Can we modify the automatic renewal clause to require explicit prior consent?")
+        elif clause_type == "arbitration":
+            questions.append("Can dispute resolution allow for informal mediation prior to binding arbitration?")
+        elif clause_type == "data_privacy":
+            questions.append("Are there defined data security standards and liability limits for data breaches?")
 
         if len(questions) >= 4:
             break

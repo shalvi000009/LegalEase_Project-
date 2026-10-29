@@ -13,4 +13,20 @@ package-lock.json
 dist/
 backend/dist/
 frontend/dist/
+models/
+ai-service/models/
+*.zip
 
+Weekly_Report_week1.docx
+Weekly_Report_week2.docx
+Weekly_Report_week3.docx
+Weekly_Report_week4.docx
+Weekly_Report_week5.docx
+Weekly_Report_week6.docx
+Weekly_Report_week7.docx
+Weekly_Report_week8.docx
+Weekly_Report_week9.docx
+Weekly_Report_week10.docx
+build_all_reports.py
+generate_reports.py
+verify_reports.py

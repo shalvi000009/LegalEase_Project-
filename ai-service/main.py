@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 # pyrefly: ignore [missing-import]
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 # Load environment variables early so all modules can read them
 load_dotenv()
@@ -33,6 +34,23 @@ app = FastAPI(
     version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+)
+
+# ---------------------------------------------------------------------------
+# CORS Configuration (allows frontend on 3000 and backend on 4000)
+# ---------------------------------------------------------------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:4000",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:4000",
+        "http://localhost:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ---------------------------------------------------------------------------
@@ -69,6 +87,10 @@ from routers.internal_rag import router as rag_router  # noqa: E402
 app.include_router(rag_router)
 logger.info("Registered router: /internal/rag-query")
 
+# Initialize classifier singleton once at startup
+from classification.classifier import ClauseClassifier  # noqa: E402
+_clause_classifier = ClauseClassifier()
+
 
 # ---------------------------------------------------------------------------
 # Week 1: Health check
@@ -85,12 +107,14 @@ def health_check() -> dict:
     Check the health of the AI microservice.
 
     Returns:
-        dict: Operational status and version.
+        dict: Operational status, classifier mode, and version.
     """
+    classifier = ClauseClassifier()
     return {
         "status": "ok",
         "service": "ai-service",
         "version": "2.0.0",
+        "classifier": classifier.mode,
     }
 
 

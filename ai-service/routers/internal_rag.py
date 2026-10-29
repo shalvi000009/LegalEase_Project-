@@ -28,6 +28,7 @@ SYNC CONTRACT NOTE FOR SHALVI (Backend):
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -37,6 +38,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from classification.cache import cache
@@ -561,3 +563,26 @@ async def query_contract_rag(request: RagQueryRequest) -> RagQueryResponse:
         answer_language=answer_language,
         reverse_translated=reverse_translated,
     )
+
+
+@router.post("/chat/stream", summary="Stream RAG chat answer token by token")
+async def chat_stream_endpoint(request: RagQueryRequest):
+    """
+    Server-Sent Events endpoint streaming the answer token by token (Part 6 - Step E3).
+    Event format: data: {"token": "..."}\n\n
+    Final event: data: {"done": true, "sources": [...]}\n\n
+    """
+    rag_res = await rag_query_endpoint(request)
+    answer_text = rag_res.answer
+    sources_data = [s.model_dump() for s in rag_res.sources]
+
+    async def token_generator():
+        words = re.split(r"(\s+)", answer_text)
+        for w in words:
+            if w:
+                yield f"data: {json.dumps({'token': w})}\n\n"
+                await asyncio.sleep(0.02)
+        yield f"data: {json.dumps({'token': '', 'done': True, 'sources': sources_data})}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(token_generator(), media_type="text/event-stream")

@@ -1,6 +1,10 @@
 
 ai-service/venv/
-
+venv/
+.venv/
 __pycache__/
-
 *.py[cod]
+.env
+models/
+*.zip
+

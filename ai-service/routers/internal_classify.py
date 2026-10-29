@@ -105,6 +105,10 @@ class ClauseResponseModel(BaseModel):
         default_factory=dict,
         description="Alias for Shalvi's migration mapping.",
     )
+    top3: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Top 3 predicted clause categories with confidence scores.",
+    )
 
 
 class ClassifyResponse(BaseModel):
@@ -298,18 +302,20 @@ async def classify_document_handler(request: ClassifyRequest) -> ClassifyRespons
     classifier = ClauseClassifier()
     risk_engine = RiskEngine()
 
-    # 3. Process each chunk
+    # 3. Process chunks using batch classification (batch_size=16)
     clauses: List[ClauseResponseModel] = []
     classifier_methods_used = set()
 
-    for chunk in chunks:
+    chunk_texts = [c["text"] for c in chunks]
+    classifications = classifier.classify_batch(chunk_texts, batch_size=16)
+
+    for chunk, classification in zip(chunks, classifications):
         text = chunk["text"]
         chunk_index = chunk["chunk_index"]
 
-        # Classify clause
-        classification = classifier.classify_text(text)
         clause_type = classification["clause_type"]
         confidence = classification["confidence"]
+        top3 = classification.get("top3", [])
         method = classification["method"]
         classifier_methods_used.add(method)
 
@@ -334,6 +340,7 @@ async def classify_document_handler(request: ClassifyRequest) -> ClassifyRespons
                 dimensions=target_dims,
                 dimension_scores=dim_scores,
                 dimension_contributions=dim_scores,
+                top3=top3,
             )
         )
 
@@ -403,6 +410,16 @@ async def classify_document_handler(request: ClassifyRequest) -> ClassifyRespons
     description="Internal endpoint called by Shalvi's BullMQ classification worker.",
 )
 async def classify_document_internal(request: ClassifyRequest) -> ClassifyResponse:
+    return await classify_document_handler(request)
+
+
+@router.post(
+    "/analyze",
+    response_model=ClassifyResponse,
+    summary="Classify clauses and calculate risk scores for a document (internal analyze alias)",
+    description="Internal endpoint called by Shalvi's BullMQ worker as /internal/analyze.",
+)
+async def classify_document_internal_analyze(request: ClassifyRequest) -> ClassifyResponse:
     return await classify_document_handler(request)
 
 
