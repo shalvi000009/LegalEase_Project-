@@ -57,9 +57,11 @@ export const DateRow: React.FC<DateRowProps> = ({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, height: 0 }}
-              ? 'bg-emerald-50/70 border-emerald-300 dark:bg-emerald-950/20 dark:border-emerald-500/30'
-              : 'bg-white dark:bg-slate-900/80 border-slate-200/90 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-slate-700'
-          }`}
+      className={`p-3.5 rounded-xl border transition-all ${
+        date.userConfirmed
+          ? 'bg-emerald-50/70 border-emerald-300 dark:bg-emerald-950/20 dark:border-emerald-500/30'
+          : 'bg-white dark:bg-slate-900/80 border-slate-200/90 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-slate-700'
+      }`}
     >
       <AnimatePresence mode="wait">
         {!isEditing ? (
@@ -76,25 +78,22 @@ export const DateRow: React.FC<DateRowProps> = ({
 
                 {/* Confidence indicator badge */}
                 <span
-    className = {`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full border shadow-sm ${isHighConfidence
-          ? 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/20'
-          : 'bg-amber-50 text-amber-900 border-amber-200 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/20'
-      }`
-  }
-  title = {`Confidence score: ${Math.round(date.confidence * 100)}%`
-}
+                  className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full border shadow-sm ${
+                    isHighConfidence
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/20'
+                      : 'bg-amber-50 text-amber-900 border-amber-200 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/20'
+                  }`}
+                  title={`Confidence score: ${Math.round(date.confidence * 100)}%`}
                 >
-  {
-    isHighConfidence?(
-        <ShieldCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-    ): (
-  <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                  {isHighConfidence ? (
+                    <ShieldCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                  ) : (
+                    <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                   )}
-{ Math.round(date.confidence * 100) }% confidence
-                </span >
+                  {Math.round(date.confidence * 100)}% confidence
+                </span>
 
-{
-  date.userConfirmed && (
+                {date.userConfirmed && (
                   <span className="text-[11px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-300 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30 shadow-sm">
                     Confirmed
                   </span>

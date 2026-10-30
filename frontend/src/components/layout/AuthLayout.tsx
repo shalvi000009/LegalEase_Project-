@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ShieldCheck, Zap, FileText, Sparkles } from 'lucide-react';
+import { ShieldCheck, Zap, FileText } from 'lucide-react';
 import { Logo } from '../ui/Logo';
 import { ThemeToggle } from '../ui/ThemeToggle';
 
@@ -40,7 +40,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitl
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent pointer-events-none" />
         
         <div>
-          <Logo size="lg" className="text-white" />
+          <Logo size="lg" inverted />
         </div>
 
         <div className="max-w-md my-auto space-y-8">
@@ -50,10 +50,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitl
             transition={{ duration: 0.6 }}
             className="space-y-4"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Next-Gen Legal Intelligence</span>
-            </div>
             <h1 className="text-4xl font-extrabold tracking-tight leading-tight">
               Analyze Contracts in Seconds with <span className="bg-gradient-to-r from-indigo-400 to-purple-300 bg-clip-text text-transparent">AI Precision</span>
             </h1>
@@ -81,11 +77,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitl
               </motion.div>
             ))}
           </div>
-        </div>
-
-        <div className="text-xs text-slate-500 flex items-center justify-between">
-          <span>&copy; {new Date().getFullYear()} LegalEase Inc. All rights reserved.</span>
-          <span>v1.0.0</span>
         </div>
       </div>
 
@@ -115,10 +106,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitl
 
           {children}
         </main>
-
-        <footer className="w-full max-w-md mx-auto text-center text-xs text-slate-400 dark:text-slate-600">
-          Protected by enterprise-grade 256-bit SSL encryption.
-        </footer>
       </div>
     </div>
   );

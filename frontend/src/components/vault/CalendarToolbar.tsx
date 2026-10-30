@@ -51,29 +51,34 @@ export const CalendarToolbar: React.FC<CustomToolbarProps> = ({
                 <div className="bg-white dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-1">
                   <button
                     onClick={() => onView('month')}
-                            ? 'bg-indigo-600 text-white shadow-sm'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                        }`}
-          >
-            Month
-          </button>
-          <button
-            onClick={() => onView('week')}
-            className = {`px-3 py-1 rounded-lg text-xs font-bold transition-all ${view === 'week'
-                          ? 'bg-indigo-600 text-white shadow-sm'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                      }`}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      view === 'month'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Month
+                  </button>
+                  <button
+                    onClick={() => onView('week')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      view === 'week'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
                   >
                     Week
                   </button>
                   <button
                     onClick={() => onView('agenda')}
-                            ? 'bg-indigo-600 text-white shadow-sm'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                        }`}
-          >
-            Agenda
-          </button>
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      view === 'agenda'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Agenda
+                  </button>
         </div>
 
         <button

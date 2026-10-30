@@ -299,7 +299,7 @@ export const DashboardPage: React.FC = () => {
                 No Contracts Uploaded Yet
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mt-2 leading-relaxed">
-                Drag and drop PDF or scanned contract documents here, or click below to start the upload pipeline.
+                Drag and drop PDF or scanned contract documents here, or click below to upload.
               </p>
               <div className="mt-6 flex items-center justify-center gap-3">
                 <Button
@@ -307,7 +307,7 @@ export const DashboardPage: React.FC = () => {
                   onClick={() => navigate('/upload')}
                   iconRight={<ArrowRight className="w-4 h-4" />}
                 >
-                  Go to Upload Pipeline
+                  Go to Upload
                 </Button>
               </div>
             </Card>

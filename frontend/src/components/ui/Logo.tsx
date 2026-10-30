@@ -6,6 +6,7 @@ interface LogoProps {
   className?: string;
   iconOnly?: boolean;
   size?: 'sm' | 'md' | 'lg';
+  inverted?: boolean;
 }
 
 const sizeClasses = {
@@ -20,18 +21,29 @@ const iconSizes = {
   lg: 'w-8 h-8',
 };
 
-export const Logo: React.FC<LogoProps> = ({ className, iconOnly = false, size = 'md' }) => {
+export const Logo: React.FC<LogoProps> = ({ className, iconOnly = false, size = 'md', inverted = false }) => {
+  const isLight = inverted || className?.includes('text-white');
+
   return (
     <div className={cn('flex items-center gap-2 font-bold tracking-tight select-none', className)}>
-      <div className="p-1.5 rounded-xl bg-[#0a1021] text-[#2ed3c7] shadow-md shadow-slate-950/20 dark:bg-[#2ed3c7] dark:text-[#0a1021]">
+      <div
+        className={cn(
+          'p-1.5 rounded-xl shadow-md transition-colors',
+          isLight
+            ? 'bg-[#2ed3c7] text-[#0a1021] shadow-slate-950/30'
+            : 'bg-[#0a1021] text-[#2ed3c7] shadow-slate-950/20 dark:bg-[#2ed3c7] dark:text-[#0a1021]'
+        )}
+      >
         <Scale className={iconSizes[size]} />
       </div>
       {!iconOnly && (
         <span className={cn(sizeClasses[size], 'font-extrabold')}>
-          <span className="text-[#0a1021] dark:text-white">
+          <span className={isLight ? 'text-white' : 'text-[#0a1021] dark:text-white'}>
             Legal
           </span>
-          <span className="text-slate-800 dark:text-slate-200">Ease</span>
+          <span className={isLight ? 'text-slate-200' : 'text-slate-800 dark:text-slate-200'}>
+            Ease
+          </span>
         </span>
       )}
     </div>

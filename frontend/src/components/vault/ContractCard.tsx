@@ -80,10 +80,12 @@ export const ContractCard: React.FC<ContractCardProps> = ({
       exit={{ opacity: 0, scale: 0.96 }}
       whileHover={{ y: -5, transition: { duration: 0.2 } }}
       onClick={handleCardClick}
-              ? 'border-rose-300 dark:border-rose-500/40 hover:border-rose-400 dark:hover:border-rose-500/60'
-              : isExpired
-                  ? 'border-rose-200 dark:border-rose-900/60 hover:border-rose-300 dark:hover:border-rose-700/60'
-                  : 'border-slate-200/90 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-slate-700'
+      className={`group relative rounded-2xl bg-white dark:bg-slate-900 border p-5 cursor-pointer transition-all duration-200 hover:shadow-xl dark:hover:shadow-2xl dark:hover:shadow-indigo-950/20 ${
+        isUrgent
+          ? 'border-rose-300 dark:border-rose-500/40 hover:border-rose-400 dark:hover:border-rose-500/60'
+          : isExpired
+          ? 'border-rose-200 dark:border-rose-900/60 hover:border-rose-300 dark:hover:border-rose-700/60'
+          : 'border-slate-200/90 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-slate-700'
       }`}
     >
       {/* Top Status Accent Border */}
@@ -189,14 +191,16 @@ export const ContractCard: React.FC<ContractCardProps> = ({
                             const nextStatus: ContractStatus = contract.status === 'renewed' ? 'active' : 'renewed';
                             onUpdateStatus(contract.id, nextStatus);
                           }}
-                                  ? 'bg-cyan-50 text-cyan-800 border-cyan-200 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/40'
-                                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                              }`}
-          title="Toggle Renewed Status"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          {contract.status === 'renewed' ? 'Renewed' : 'Mark Renewed'}
-        </button>
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all active:scale-95 shadow-sm ${
+                            contract.status === 'renewed'
+                              ? 'bg-cyan-50 text-cyan-800 border-cyan-200 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/40'
+                              : 'bg-slate-50 hover:bg-slate-100 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                          }`}
+                          title="Toggle Renewed Status"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          {contract.status === 'renewed' ? 'Renewed' : 'Mark Renewed'}
+                        </button>
 
         <div className="flex items-center gap-1.5">
           {onEditDates && (
@@ -210,7 +214,7 @@ export const ContractCard: React.FC<ContractCardProps> = ({
           )}
 
           <button
-            onClick={() => navigate(`/ results ? id = ${contract.id}`)}
+            onClick={() => navigate(`/results?id=${contract.id}`)}
             className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-600/20 dark:hover:bg-indigo-600/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 shadow-sm transition-all active:scale-95"
             title="View Details"
           >
