@@ -44,7 +44,7 @@ From the project root (`LegalEase`):
 
 ```powershell
 # Start PostgreSQL, Redis, and MinIO in the background
-docker compose up -d
+docker compose up -d postgres redis minio
 
 # Verify all containers are up and healthy
 docker ps
@@ -185,7 +185,7 @@ From the project root (`LegalEase`):
 
 ```bash
 # Start PostgreSQL, Redis, and MinIO in background
-docker compose up -d
+docker compose up -d postgres redis minio
 
 # Verify all containers are up and healthy
 docker ps

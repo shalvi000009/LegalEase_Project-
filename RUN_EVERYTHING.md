@@ -19,7 +19,7 @@ Open **4 separate PowerShell windows**:
 
 ### 1. Docker Backing Services
 ```powershell
-docker compose up -d
+docker compose up -d postgres redis minio
 ```
 
 ### 2. AI Service (Python FastAPI)
@@ -53,7 +53,7 @@ Open **4 separate Terminal tabs or windows**:
 
 ### 1. Docker Backing Services
 ```bash
-docker compose up -d
+docker compose up -d postgres redis minio
 ```
 
 ### 2. AI Service (Python FastAPI)
