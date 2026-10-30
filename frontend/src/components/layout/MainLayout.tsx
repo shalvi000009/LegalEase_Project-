@@ -23,7 +23,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const isSpecializedChatRoute = location.pathname.includes('/results') || location.pathname.includes('/chat');
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+    <div className="workspace-surface min-h-screen flex flex-col">
       <PushPermissionPrompt />
       <Header onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)} />
       <NotificationBanner
@@ -32,8 +32,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar mobileOpen={mobileMenuOpen} onCloseMobile={() => setMobileMenuOpen(false)} />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-8">
-          <div className="max-w-7xl mx-auto space-y-6">{children}</div>
+        <main className="flex-1 overflow-y-auto p-4 sm:p-7 lg:p-8">
+          <div className="max-w-[1440px] mx-auto space-y-6">{children}</div>
         </main>
       </div>
       {!isSpecializedChatRoute && (

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import {
   LogOut,
@@ -42,12 +42,32 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const [noticeDropdownOpen, setNoticeDropdownOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const isResultsPage = location.pathname.includes('/results');
 
   const filteredDocs = searchQuery.trim()
     ? documents.filter((d) => d.filename.toLowerCase().includes(searchQuery.toLowerCase()))
     : [];
+
+  useEffect(() => {
+    if (mobileSearchOpen) window.setTimeout(() => searchInputRef.current?.focus(), 0);
+  }, [mobileSearchOpen]);
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTyping = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && !isTyping) {
+        event.preventDefault();
+        setMobileSearchOpen(true);
+        setNoticeDropdownOpen(false);
+        setProfileDropdownOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, []);
 
   const getBreadcrumbs = () => {
     const path = location.pathname;
@@ -100,8 +120,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   };
 
   return (
-    <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-30 px-3 sm:px-6 flex items-center justify-between">
-      <div className="flex items-center gap-2 sm:gap-6">
+    <header className="h-[72px] border-b border-slate-200/80 dark:border-white/[.08] bg-white/85 dark:bg-[#111a32]/90 backdrop-blur-md sticky top-0 z-30 px-3 sm:px-6 flex items-center justify-between">
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-6">
         {onToggleMobileMenu && (
           <button
             onClick={onToggleMobileMenu}
@@ -111,7 +131,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
             <Menu className="w-6 h-6" />
           </button>
         )}
-        <Logo size="md" />
+        <div className="sm:hidden"><Logo iconOnly size="sm" /></div>
+        <div className="hidden sm:block"><Logo size="md" /></div>
 
         {/* Breadcrumb Navigation */}
         <nav className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500 font-medium">
@@ -131,6 +152,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
       </div>
 
       <div className="flex items-center gap-1.5 sm:gap-3">
+        <button type="button" onClick={() => setMobileSearchOpen(true)} className="hidden lg:flex items-center gap-2 h-9 w-56 px-3 rounded-lg border border-slate-200 bg-slate-50 text-slate-400 dark:border-white/10 dark:bg-white/[.04] hover:border-indigo-300 dark:hover:border-cyan-300/30 transition-colors" aria-label="Search workspace, press Command K">
+          <Search className="w-4 h-4" />
+          <span className="text-xs font-medium">Search workspace</span>
+          <span className="ml-auto text-[10px] border border-slate-200 dark:border-white/10 rounded px-1.5 py-0.5">⌘ K</span>
+        </button>
         {/* Mobile Quick Search Button */}
         <button
           onClick={() => setMobileSearchOpen((prev) => !prev)}
@@ -153,14 +179,14 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         )}
 
         {/* Notification Bell & Popover Dropdown */}
-        <div className="relative">
+        <div className="relative hidden sm:block">
           <button
             onClick={() => {
               setNoticeDropdownOpen((prev) => !prev);
               setProfileDropdownOpen(false);
               setMobileSearchOpen(false);
             }}
-            className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative"
+            className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:bg-cyan-50 dark:hover:bg-white/[.06] transition-colors relative"
             aria-label="Notifications"
           >
             <Bell className="w-5 h-5" />
@@ -250,7 +276,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           )}
         </div>
 
-        <ThemeToggle />
+        <div className="hidden sm:block"><ThemeToggle /></div>
 
         {/* User Profile Dropdown */}
         {user && (
@@ -274,7 +300,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                   {user.email}
                 </span>
               </div>
-              <ChevronDown className="w-4 h-4 text-slate-400" />
+              <ChevronDown className="hidden sm:block w-4 h-4 text-slate-400" />
             </button>
 
             {profileDropdownOpen && (
@@ -285,6 +311,10 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                 <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 sm:hidden">
                   <p className="text-xs font-bold text-slate-900 dark:text-slate-100">{user.name}</p>
                   <p className="text-[11px] text-slate-500">{user.email}</p>
+                </div>
+                <div className="sm:hidden px-2 py-2 border-b border-slate-100 dark:border-slate-800 space-y-1">
+                  <div className="flex items-center justify-between px-2 py-1 text-xs font-semibold text-slate-700 dark:text-slate-300"><span>Appearance</span><ThemeToggle /></div>
+                  <button onClick={() => { setProfileDropdownOpen(false); setNoticeDropdownOpen(true); }} className="w-full flex items-center justify-between px-2 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg"><span className="flex items-center gap-2"><Bell className="w-4 h-4 text-slate-400" />Notifications</span>{unreadCount > 0 && <span className="text-[10px] font-black text-[#5367ff]">{unreadCount}</span>}</button>
                 </div>
                 <Link
                   to="/settings"
@@ -312,6 +342,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           <div className="relative flex items-center">
             <Search className="w-4 h-4 text-slate-400 absolute left-3" />
             <input
+              ref={searchInputRef}
               type="text"
               placeholder="Search contracts by title..."
               value={searchQuery}

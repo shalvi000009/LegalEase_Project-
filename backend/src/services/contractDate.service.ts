@@ -291,18 +291,18 @@ export async function getVaultContractsForUser(userId: string) {
 
   const now = new Date();
 
-  const formattedContracts = documents.map((doc) => {
+  const formattedContracts = documents.map((doc: any) => {
     const latestAnalysis = doc.analyses?.[0];
     const riskScore = latestAnalysis?.overall_risk_score ?? 0;
 
     // Find expiry date record if available
-    const expiryRecord = doc.contract_dates.find((d) => d.date_type === DateType.expiry_date) ||
-      doc.contract_dates.find((d) => d.date_type === DateType.renewal_date) ||
+    const expiryRecord = doc.contract_dates.find((d: any) => d.date_type === DateType.expiry_date) ||
+      doc.contract_dates.find((d: any) => d.date_type === DateType.renewal_date) ||
       doc.contract_dates[0];
 
     // Find effective date record if available
     const effectiveRecord = doc.contract_dates.find(
-      (d) => d.raw_text.toLowerCase().includes("effective")
+      (d: any) => d.raw_text.toLowerCase().includes("effective")
     );
 
     let expiryDate = "";
@@ -367,9 +367,9 @@ export async function getVaultContractsForUser(userId: string) {
   });
 
   const total = formattedContracts.length;
-  const active = formattedContracts.filter((c) => c.status === "active" || c.status === "renewed").length;
-  const expiringSoon = formattedContracts.filter((c) => c.status === "expiring_soon").length;
-  const expired = formattedContracts.filter((c) => c.status === "expired").length;
+  const active = formattedContracts.filter((c: any) => c.status === "active" || c.status === "renewed").length;
+  const expiringSoon = formattedContracts.filter((c: any) => c.status === "expiring_soon").length;
+  const expired = formattedContracts.filter((c: any) => c.status === "expired").length;
 
   return {
     contracts: formattedContracts,

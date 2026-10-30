@@ -15,7 +15,7 @@ export interface ButtonProps extends Omit<HTMLMotionProps<'button'>, 'children'>
 
 const variantStyles = {
   primary:
-    'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/25 dark:shadow-indigo-900/30 border border-transparent',
+    'bg-[#5367ff] hover:bg-[#4355ef] text-white shadow-md shadow-indigo-500/25 dark:shadow-indigo-900/30 border border-transparent',
   secondary:
     'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700',
   ghost:
@@ -23,7 +23,7 @@ const variantStyles = {
   danger:
     'bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-500/25 border border-transparent',
   outline:
-    'bg-transparent hover:bg-indigo-50 dark:hover:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 border border-indigo-300 dark:border-indigo-700',
+    'bg-transparent hover:bg-cyan-50 dark:hover:bg-cyan-400/10 text-indigo-600 dark:text-cyan-300 border border-indigo-300 dark:border-cyan-300/30',
 };
 
 const sizeStyles = {

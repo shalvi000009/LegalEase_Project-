@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -57,12 +58,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onCloseMob
   const activeIntegrationsCount = integrations.filter((i) => i.isActive).length;
 
   const sidebarContent = (
-    <div className="h-full flex flex-col justify-between p-4 overflow-y-auto">
+    <div className="h-full flex flex-col justify-between p-4 overflow-y-auto bg-[#0a1021] text-slate-100">
       <div className="space-y-1">
-        <div className="flex items-center justify-between px-3 py-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            Navigation
-          </span>
+        <div className="flex items-center justify-between px-3 py-3 mb-2 border-b border-white/10">
+          <span className="text-[10px] font-bold uppercase tracking-[.16em] text-slate-400">Workspace</span>
           {onCloseMobile && (
             <button
               onClick={onCloseMobile}
@@ -85,10 +84,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onCloseMob
               onClick={onCloseMobile}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-semibold transition-all duration-200 min-h-[44px]',
+                  'flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-semibold transition-all duration-200 min-h-[44px] relative',
                   isActive
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 font-bold'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-slate-100'
+                    ? 'bg-white/[.12] text-white shadow-lg shadow-black/10 font-bold'
+                    : 'text-slate-400 hover:bg-white/[.06] hover:text-white'
                 )
               }
             >
@@ -97,7 +96,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onCloseMob
                 <span>{item.label}</span>
               </div>
               {badgeText && (
-                <span className="text-[10px] bg-amber-500/20 text-amber-500 dark:text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">
+                <span className="text-[10px] bg-amber-400/15 text-amber-300 border border-amber-300/20 px-2 py-0.5 rounded-full font-bold">
                   {badgeText}
                 </span>
               )}
@@ -115,15 +114,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onCloseMob
           className={cn(
             'w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-semibold transition-all duration-200 min-h-[44px]',
             isChatOpen
-              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 font-bold'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-slate-100'
+              ? 'bg-white/[.12] text-white shadow-md shadow-black/20 font-bold'
+              : 'text-slate-400 hover:bg-white/[.06] hover:text-white'
           )}
         >
           <div className="flex items-center gap-3">
-            <MessageSquare className="w-4 h-4 shrink-0 text-indigo-500" />
+            <MessageSquare className="w-4 h-4 shrink-0 text-[#2ed3c7]" />
             <span>AI Assistant</span>
           </div>
-          <span className="text-[10px] bg-indigo-500/20 text-indigo-500 dark:text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded-full font-bold">
+          <span className="text-[10px] bg-cyan-300/10 text-cyan-200 border border-cyan-300/20 px-2 py-0.5 rounded-full font-bold">
             Chat
           </span>
         </button>
@@ -140,8 +139,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onCloseMob
                 cn(
                   'flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-semibold transition-all duration-200 min-h-[44px]',
                   isActive
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 font-bold'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-slate-100'
+                    ? 'bg-white/[.12] text-white shadow-md shadow-black/20 font-bold'
+                    : 'text-slate-400 hover:bg-white/[.06] hover:text-white'
                 )
               }
             >
@@ -155,14 +154,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onCloseMob
       </div>
 
       {/* Footer Profile / Workspace Info */}
-      <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+      <div className="space-y-3 pt-4 border-t border-white/10">
         {user && (
-          <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+          <div className="flex items-center gap-3 p-2.5 rounded-xl bg-white/[.06] border border-white/10">
+            <div className="w-8 h-8 rounded-lg bg-[#2ed3c7] text-[#0a1021] flex items-center justify-center font-bold text-xs shrink-0">
               {user.name?.charAt(0) || 'U'}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{user.name}</p>
+              <p className="text-xs font-bold text-white truncate">{user.name}</p>
               <p className="text-[10px] text-slate-400 truncate">{user.email}</p>
             </div>
           </div>
@@ -174,7 +173,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onCloseMob
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="w-64 border-r border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md hidden md:block shrink-0">
+      <aside className="w-64 border-r border-white/10 bg-[#0a1021] hidden md:block shrink-0">
         {sidebarContent}
       </aside>
 
@@ -187,9 +186,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onCloseMob
             onClick={onCloseMobile}
           />
           {/* Mobile Sidebar Content */}
-          <div className="relative w-72 max-w-[85vw] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-10 shadow-2xl flex flex-col">
+          <motion.div initial={{ x: -24, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -24, opacity: 0 }} className="relative w-72 max-w-[85vw] bg-[#0a1021] border-r border-white/10 z-10 shadow-2xl flex flex-col">
             {sidebarContent}
-          </div>
+          </motion.div>
         </div>
       )}
     </>

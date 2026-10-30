@@ -1,14 +1,14 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { 
-  FileText, 
-  Calendar, 
-  Clock, 
-  AlertCircle, 
-  RefreshCw, 
-  Trash2, 
-  Edit3, 
+import {
+  FileText,
+  Calendar,
+  Clock,
+  AlertCircle,
+  RefreshCw,
+  Trash2,
+  Edit3,
   ExternalLink,
   ShieldAlert,
   Bell
@@ -34,15 +34,15 @@ export const ContractCard: React.FC<ContractCardProps> = ({
   const getStatusBadge = (status: ContractStatus) => {
     switch (status) {
       case 'active':
-        return { label: 'Active', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' };
+        return { label: 'Active', color: 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30' };
       case 'expiring_soon':
-        return { label: 'Expiring Soon', color: 'bg-amber-500/10 text-amber-400 border-amber-500/30' };
+        return { label: 'Expiring Soon', color: 'bg-amber-50 text-amber-900 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30' };
       case 'expired':
-        return { label: 'Expired', color: 'bg-rose-500/10 text-rose-400 border-rose-500/30' };
+        return { label: 'Expired', color: 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-500/30' };
       case 'renewed':
-        return { label: 'Renewed', color: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' };
+        return { label: 'Renewed', color: 'bg-cyan-50 text-cyan-800 border-cyan-200 dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-500/30' };
       default:
-        return { label: 'Unknown', color: 'bg-slate-500/10 text-slate-400 border-slate-500/30' };
+        return { label: 'Unknown', color: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700' };
     }
   };
 
@@ -55,15 +55,15 @@ export const ContractCard: React.FC<ContractCardProps> = ({
 
   const getDaysBadgeStyle = () => {
     if (isExpired) {
-      return 'bg-rose-500/20 text-rose-300 border-rose-500/40';
+      return 'bg-rose-100 text-rose-850 text-rose-800 border-rose-300 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-500/40 font-bold';
     }
     if (isUrgent) {
-      return 'bg-rose-500/20 text-rose-300 border-rose-500/50 animate-pulse';
+      return 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-500/50 font-bold animate-pulse';
     }
     if (days <= 30) {
-      return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+      return 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/40 font-bold';
     }
-    return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
+    return 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30 font-bold';
   };
 
   const handleCardClick = (e: React.MouseEvent) => {
@@ -78,133 +78,131 @@ export const ContractCard: React.FC<ContractCardProps> = ({
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.96 }}
-      whileHover={{ y: -4 }}
+      whileHover={{ y: -5, transition: { duration: 0.2 } }}
       onClick={handleCardClick}
-      className={`relative group cursor-pointer bg-slate-900/70 border rounded-2xl p-5 backdrop-blur-xl transition-all duration-300 ${
-        isUrgent
-          ? 'border-rose-500/40 hover:border-rose-500/60 shadow-lg shadow-rose-950/20'
-          : isExpired
-          ? 'border-rose-900/60 hover:border-rose-700/60 opacity-90'
-          : 'border-slate-800 hover:border-slate-700 hover:shadow-xl hover:shadow-indigo-950/10'
+              ? 'border-rose-300 dark:border-rose-500/40 hover:border-rose-400 dark:hover:border-rose-500/60'
+              : isExpired
+                  ? 'border-rose-200 dark:border-rose-900/60 hover:border-rose-300 dark:hover:border-rose-700/60'
+                  : 'border-slate-200/90 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-slate-700'
       }`}
     >
       {/* Top Status Accent Border */}
       <div
-        className={`absolute top-0 left-5 right-5 h-[2px] rounded-t-2xl ${
-          isExpired
-            ? 'bg-rose-500'
-            : isUrgent
-            ? 'bg-rose-400'
+    className = {`absolute top-0 left-0 right-0 h-1 transition-all ${isExpired
+        ? 'bg-rose-500'
+        : isUrgent
+            ? 'bg-rose-500 animate-pulse'
             : contract.status === 'expiring_soon'
-            ? 'bg-amber-400'
-            : 'bg-emerald-400'
-        }`}
+                ? 'bg-amber-500'
+                : 'bg-emerald-500'
+        }`
+  }
       />
 
-      <div className="flex items-start justify-between gap-3 pt-1">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-slate-800/90 text-indigo-400 border border-slate-700/60 group-hover:scale-105 transition-transform">
-            <FileText className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-white group-hover:text-indigo-300 transition-colors line-clamp-1">
-              {contract.name}
-            </h3>
-            <span className="text-[11px] text-slate-400 font-medium">
-              {contract.documentType || 'Legal Contract'}
-            </span>
-          </div>
-        </div>
-
-        <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${statusInfo.color}`}>
-          {statusInfo.label}
-        </span>
-      </div>
-
-      {/* Middle Stats Grid */}
-      <div className="my-4 pt-3 border-t border-slate-800/80 grid grid-cols-2 gap-3 text-xs">
-        <div className="space-y-1">
-          <span className="text-[11px] text-slate-400 flex items-center gap-1">
-            <Calendar className="w-3.5 h-3.5 text-slate-500" /> Expiry Date
-          </span>
-          <p className="font-semibold text-slate-200">{contract.expiryDate}</p>
-        </div>
-
-        <div className="space-y-1">
-          <span className="text-[11px] text-slate-400 flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5 text-slate-500" /> Days Remaining
-          </span>
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-md font-bold text-[11px] border ${getDaysBadgeStyle()}`}>
-            {isExpired ? (
-              <span className="flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" /> Expired
-              </span>
-            ) : (
-              `${days} days`
-            )}
-          </span>
-        </div>
-      </div>
-
-      {/* Risk Score & Next Reminder */}
-      <div className="flex items-center justify-between text-xs py-2 px-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
-        <div className="flex items-center gap-1.5">
-          <ShieldAlert className={`w-3.5 h-3.5 ${contract.riskScore > 60 ? 'text-rose-400' : 'text-emerald-400'}`} />
-          <span className="text-slate-400">Risk Score:</span>
-          <span className={`font-bold ${contract.riskScore > 60 ? 'text-rose-400' : 'text-emerald-400'}`}>
-            {contract.riskScore}/100
-          </span>
-        </div>
-
-        {contract.nextReminder ? (
-          <div className="relative group/bell flex items-center gap-1 text-[11px] text-amber-400 font-semibold bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
-            <Bell className="w-3.5 h-3.5 animate-bounce text-amber-400" />
-            <span className="truncate max-w-[110px]">{contract.nextReminder}</span>
-            {/* Tooltip on hover */}
-            <div className="absolute bottom-full right-0 mb-2 hidden group-hover/bell:block w-48 p-2.5 rounded-xl bg-slate-800 border border-slate-700 text-[11px] text-slate-200 shadow-xl z-20">
-              <p className="font-bold text-white mb-0.5">Upcoming Reminder</p>
-              <p className="text-slate-300">Alert set for: {contract.nextReminder}</p>
-              <p className="text-[10px] text-slate-400 mt-1">Multi-channel alert enabled</p>
+    < div className = "flex items-start justify-between gap-3 pt-1" >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-slate-700/60 group-hover:scale-105 transition-transform shrink-0 shadow-sm">
+              <FileText className="w-5 h-5" />
             </div>
-          </div>
-        ) : (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate('/settings');
-            }}
-            className="text-[11px] text-slate-500 hover:text-indigo-400 flex items-center gap-1 transition-colors"
-            title="Configure Reminders"
-          >
-            <Bell className="w-3 h-3" />
-            <span>Set Reminder</span>
-          </button>
-        )}
-      </div>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
+                    {contract.name}
+                  </h3>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold block truncate">
+                      {contract.documentType || 'Legal Contract'}
+                    </span>
+                </div>
+            </div>
 
-      {/* Actions Row */}
-      <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
-        <button
-          onClick={() => {
-            const nextStatus: ContractStatus = contract.status === 'renewed' ? 'active' : 'renewed';
-            onUpdateStatus(contract.id, nextStatus);
-          }}
-          className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-colors ${
-            contract.status === 'renewed'
-              ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
-              : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
-          }`}
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border shadow-sm shrink-0 ${statusInfo.color}`}>
+                {statusInfo.label}
+              </span>
+          </div>
+
+          {/* Middle Stats Grid */}
+            <div className="my-4 pt-3.5 border-t border-slate-100 dark:border-slate-800/80 grid grid-cols-2 gap-3 text-xs">
+              <div className="space-y-1">
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" /> Expiry Date
+                  </span>
+                  <p className="font-extrabold text-slate-800 dark:text-slate-200 text-xs">{contract.expiryDate}</p>
+              </div>
+
+              <div className="space-y-1">
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" /> Days Remaining
+                  </span>
+                  <div>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] border shadow-sm ${getDaysBadgeStyle()}`}>
+                      {isExpired ? (
+                        <span className="flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" /> Expired
+                        </span>
+                      ) : (
+                        `${days} days`
+                      )}
+                    </span>
+                  </div>
+              </div>
+            </div>
+
+            {/* Risk Score & Next Reminder */}
+              <div className="flex items-center justify-between text-xs py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80">
+                <div className="flex items-center gap-1.5">
+                    <ShieldAlert className={`w-3.5 h-3.5 ${contract.riskScore > 60 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`} />
+                    <span className="text-slate-600 dark:text-slate-400 font-semibold">Risk:</span>
+                    <span className={`font-black ${contract.riskScore > 60 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      {contract.riskScore}/100
+                    </span>
+                </div>
+
+                {contract.nextReminder ? (
+                    <div className="relative group/bell flex items-center gap-1 text-[11px] text-amber-800 dark:text-amber-300 font-bold bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-200 dark:border-amber-500/20 shadow-sm">
+                      <Bell className="w-3.5 h-3.5 animate-bounce text-amber-600 dark:text-amber-400" />
+                      <span className="truncate max-w-[110px]">{contract.nextReminder}</span>
+                      {/* Tooltip on hover */}
+                        <div className="absolute bottom-full right-0 mb-2 hidden group-hover/bell:block w-48 p-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 border border-slate-800 dark:border-slate-700 text-[11px] text-slate-200 shadow-xl z-20">
+                          <p className="font-bold text-white mb-0.5">Upcoming Reminder</p>
+                          <p className="text-slate-300">Alert set for: {contract.nextReminder}</p>
+                          <p className="text-[10px] text-slate-400 mt-1">Multi-channel alert enabled</p>
+                        </div>
+                      </div>
+                      ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate('/settings');
+                        }}
+                        className="text-[11px] font-semibold text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1 transition-colors"
+                        title="Configure Reminders"
+                      >
+                        <Bell className="w-3 h-3" />
+                        <span>Set Reminder</span>
+                      </button>
+        )}
+                    </div>
+
+                    {/* Actions Row */}
+                      <div className="mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+                        <button
+                          onClick={() => {
+                            const nextStatus: ContractStatus = contract.status === 'renewed' ? 'active' : 'renewed';
+                            onUpdateStatus(contract.id, nextStatus);
+                          }}
+                                  ? 'bg-cyan-50 text-cyan-800 border-cyan-200 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/40'
+                                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                              }`}
           title="Toggle Renewed Status"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           {contract.status === 'renewed' ? 'Renewed' : 'Mark Renewed'}
         </button>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           {onEditDates && (
             <button
               onClick={() => onEditDates(contract.id)}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+              className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white border border-slate-200 dark:border-slate-700 shadow-sm transition-all active:scale-95"
               title="Edit Dates"
             >
               <Edit3 className="w-3.5 h-3.5" />
@@ -212,8 +210,8 @@ export const ContractCard: React.FC<ContractCardProps> = ({
           )}
 
           <button
-            onClick={() => navigate(`/results?id=${contract.id}`)}
-            className="p-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 transition-colors"
+            onClick={() => navigate(`/ results ? id = ${contract.id}`)}
+            className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-600/20 dark:hover:bg-indigo-600/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 shadow-sm transition-all active:scale-95"
             title="View Details"
           >
             <ExternalLink className="w-3.5 h-3.5" />
@@ -221,7 +219,7 @@ export const ContractCard: React.FC<ContractCardProps> = ({
 
           <button
             onClick={() => onDelete(contract.id)}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 transition-colors"
+            className="p-1.5 rounded-lg bg-slate-50 hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-950/40 text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 border border-slate-200 dark:border-slate-700 shadow-sm transition-all active:scale-95"
             title="Delete Contract"
           >
             <Trash2 className="w-3.5 h-3.5" />

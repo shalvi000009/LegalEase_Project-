@@ -26,3 +26,4 @@ sentencepiece>=0.1.99
 
 # Testing
 pytest>=8.0.0
+dateparser>=1.1.8
